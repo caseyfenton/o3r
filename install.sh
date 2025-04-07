@@ -31,7 +31,16 @@ cat > "$O3R_SCRIPT" << EOF
 # Direct o3r CLI wrapper script
 # Installed path: $SCRIPT_DIR
 
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
 # Use absolute paths to ensure command works from anywhere
+if [ ! -x "$MAIN_SCRIPT" ]; then
+    echo "Error: Could not find o3r main script at $MAIN_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
 exec "$MAIN_SCRIPT" "\$@"
 EOF
 chmod +x "$O3R_SCRIPT"
@@ -62,15 +71,68 @@ if [ ${#INSTALL_DIRS[@]} -eq 0 ]; then
     INSTALL_DIRS+=("$HOME/.local/bin")
 fi
 
-# Create symlinks for all commands
+# Create wrapper scripts for all commands
 for INSTALL_DIR in "${INSTALL_DIRS[@]}"; do
     # Main o3r command
     ln -sf "$O3R_SCRIPT" "$INSTALL_DIR/o3r"
     
-    # O3R automation commands
-    ln -sf "$COLLECT_SCRIPT" "$INSTALL_DIR/o3r-collect"
-    ln -sf "$MONITOR_SCRIPT" "$INSTALL_DIR/o3r-monitor"
-    ln -sf "$BACKGROUND_SCRIPT" "$INSTALL_DIR/o3r-run"
+    # Create wrapper scripts for O3R automation commands
+    cat > "$INSTALL_DIR/o3r-collect" << EOF
+#!/usr/bin/env bash
+# o3r-collect wrapper script
+# Points to: $COLLECT_SCRIPT
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Check if target script exists
+if [ ! -x "$COLLECT_SCRIPT" ]; then
+    echo "Error: Could not find o3r collect script at $COLLECT_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$COLLECT_SCRIPT" "\$@"
+EOF
+    chmod +x "$INSTALL_DIR/o3r-collect"
+    
+    cat > "$INSTALL_DIR/o3r-monitor" << EOF
+#!/usr/bin/env bash
+# o3r-monitor wrapper script
+# Points to: $MONITOR_SCRIPT
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Check if target script exists
+if [ ! -x "$MONITOR_SCRIPT" ]; then
+    echo "Error: Could not find o3r monitor script at $MONITOR_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$MONITOR_SCRIPT" "\$@"
+EOF
+    chmod +x "$INSTALL_DIR/o3r-monitor"
+    
+    cat > "$INSTALL_DIR/o3r-run" << EOF
+#!/usr/bin/env bash
+# o3r-run wrapper script
+# Points to: $BACKGROUND_SCRIPT
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Check if target script exists
+if [ ! -x "$BACKGROUND_SCRIPT" ]; then
+    echo "Error: Could not find o3r background script at $BACKGROUND_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$BACKGROUND_SCRIPT" "\$@"
+EOF
+    chmod +x "$INSTALL_DIR/o3r-run"
     
     print_message "$GREEN" "✓ Commands installed to $INSTALL_DIR"
 done
