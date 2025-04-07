@@ -1,164 +1,137 @@
-# O3R - O3 Refactoring Tool
+# O3R: Unleash the Power of O3 for Code Refactoring
 
-A utility for preparing code for the O3 model to assist with refactoring. This tool combines source files with proper formatting and instructions for better results with the O3 model.
+**O3R** (pronounced "o-three-r") is a powerful utility that unlocks the full potential of OpenAI's O3 model for code refactoring, enhancement, and development. This tool bridges the gap between limited-context coding assistants and O3's massive context window capabilities.
 
-## Features
+## 🚀 Why O3R Changes the Game
 
-- 🔄 Concatenates source files with automatic formatting for the O3 model
-- 📎 Copies prepared content to clipboard
-- 🚀 Auto-pastes to the O3 web app (optional)
-- 📊 Monitors for O3 responses (optional)
-- 📋 Extracts code responses from O3
+Most coding assistants suffer from limited context windows, making it difficult to work with large codebases. O3R solves this problem by:
 
-## Installation
+- **Leveraging O3's 200K token context window** - Process entire modules or projects at once
+- **Utilizing O3's 100K output token capacity** - Get comprehensive rewrites and refactors in one shot
+- **Automating the entire workflow** - From code preparation to response collection
+- **Maximizing value from ChatGPT subscriptions** - O3 web interface charges per query/response, not per token
+
+## 💡 Use Cases
+
+### Comprehensive Code Refactoring
+Feed entire modules into O3 to:
+- Modernize legacy codebases
+- Apply consistent patterns across your project
+- Convert between paradigms (e.g., OOP to functional)
+
+### One-Shot Feature Implementation
+Provide full context for more accurate feature additions:
+- Add new functionality with complete understanding of your codebase
+- Implement cross-cutting concerns correctly the first time
+- Ensure new code follows existing patterns and conventions
+
+### Deep Bug Fixing
+Fix complex bugs that span multiple files:
+- Include all relevant code paths in a single prompt
+- Get fixes that address root causes, not just symptoms
+- Debug issues that depend on interactions between components
+
+### Code Quality Improvements
+Enhance your entire codebase at once:
+- Apply consistent formatting and style
+- Improve performance bottlenecks
+- Add proper error handling throughout
+- Enhance documentation and type hints
+
+## ✨ Features
+
+- 🔄 **Smart Concatenation**: Combines source files with proper formatting and instructions
+- 📎 **Clipboard Integration**: Automatically copies prepared content
+- 🚀 **Auto-Paste**: Opens O3 web app and pastes your code (optional)
+- 📊 **Response Monitoring**: Watches for when O3 completes its response (optional)
+- 📋 **Response Collection**: Extracts code from O3's response for easy integration
+- ⚙️ **Customizable Process**: Supports various file types and configurations
+
+## 💰 Cost Efficiency
+
+Using o3r with a ChatGPT subscription provides exceptional value:
+- **Subscription-based pricing**: Pay a flat fee (e.g., $20/month) rather than per-token API costs
+- **Unlimited queries**: Process large codebases without worrying about token costs
+- **Avoid $1+ API charges**: A single large refactoring job via API could cost dollars per run
+
+## 🔧 Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/username/o3r.git
+git clone https://github.com/caseyfenton/o3r.git
 cd o3r
 
 # Install globally
 ./install.sh
 ```
 
-This will install the following commands to your system:
+This will install the following commands:
 
 - `o3r`: Main tool for preparing code for O3 refactoring
-- `o3r_collect_response`: Tool for collecting responses from O3
-- `o3r_monitor_response`: Tool for monitoring O3 for responses
-- `o3r_background`: All-in-one background tool for the complete O3 workflow
+- `o3r-collect`: Tool for collecting responses from O3
+- `o3r-monitor`: Tool for monitoring O3 for responses
+- `o3r-run`: All-in-one background tool for the complete O3 workflow
 
-Commands are installed to both `~/bin` and `~/.local/bin` if they exist, ensuring they work the same way as other system tools.
-
-## Usage
+## 📖 Usage
 
 ### Basic Usage
 
 ```bash
-# Show help
-o3r --help
+# Process all Python files in the current directory
+o3r -d . -e py
 
-# Process all JavaScript files in a directory
-o3r -d ./src -e js
+# Process JavaScript and TypeScript files in the src directory
+o3r -d ./src -e js,ts
 
-# Process specific files
-o3r -f files.txt
-
-# Save output to file instead of clipboard
-o3r -d ./src -e js -o output.txt
-
-# Auto-paste to O3 web app (optional)
-o3r -d ./src -e js -p
-
-# Auto-paste and monitor for responses
-o3r -d ./src -e js -p -M
-
-# Change check interval and max wait time for monitoring
-o3r -d ./src -e js -p -M -i 60 -t 600
+# Process specific files listed in a text file
+o3r -f my_files.txt
 ```
-
-### O3 Model Automation Options
-
-The toolkit provides multiple ways to interact with the O3 model, from modular step-by-step processes to a fully automated background workflow:
-
-#### Option 1: All-in-one Background Process (Recommended)
-
-The `o3r_background` command handles the entire O3 workflow in the background:
-
-```bash
-# Submit content from clipboard to O3 and monitor for response
-o3r_background
-
-# Submit content from file with custom check interval (60s) and timeout (1h)
-o3r_background -f input.txt -i 60 -m 3600 -o response.txt
-```
-
-This background process:
-1. Opens the O3 web app
-2. Pastes content and sends it
-3. Checks for responses at regular intervals
-4. Saves the response to a file when ready
-5. Provides progress updates during monitoring
-
-#### Option 2: Step-by-Step Process
-
-For more granular control, you can use the individual commands:
-
-```bash
-# Step 1: Prepare content using o3r tool
-o3r -d ./src -e js -o content.txt
-
-# Step 2: Submit to O3 (interactive)
-o3r_collect_response submit -f content.txt
-
-# Step 3: Monitor for response
-o3r_monitor_response -i 30 -m 1800 -o response.txt
-
-# Step 4: Collect response (if not using monitor)
-o3r_collect_response collect
-```
-
-Both approaches provide the same functionality, but the all-in-one process is more convenient for most use cases.
 
 ### Advanced Usage
 
 ```bash
-# Multiple directories
-o3r -d "src/core,tests" -e js
+# Auto-paste to O3 web app
+o3r -d ./src -e py -p
 
-# Use with file list
-echo -e "file1.js\nfile2.js" | o3r -f -
+# Auto-paste AND monitor for responses
+o3r -d ./src -e py -p -m
 
-# Pipe output to another command
-o3r -d ./src -e js | your-command
+# Write output to a file instead of clipboard
+o3r -d ./src -e py -o refactor_request.txt
+
+# Set custom monitoring intervals (check every 10 seconds for 5 minutes)
+o3r -d ./src -e py -p -m -i 10 -t 300
 ```
 
-## Chrome Web App Integration
-
-The scripts now use Chrome web apps for better window management:
-
-- Automatically detects installed O3 web app
-- Looks for `/Users/casey/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app`
-- Supports keyboard shortcuts:
-  - Cmd+Shift+C: Copy full response
-  - Cmd+Shift+;: Extract only code blocks
-
-### Response Monitoring
-
-The new monitoring script checks for O3 responses:
+### Collecting Responses
 
 ```bash
-# After submitting content with o3r -p
-./o3r_monitor_response.sh
+# Collect the full response from O3
+o3r-collect collect
 
-# With custom interval and timeout
-./o3r_monitor_response.sh -i 30 -m 600
-
-# Save response to file
-./o3r_monitor_response.sh -o response.txt
+# Extract just the code blocks
+o3r-collect code
 ```
 
-## Scripts
+### Complete Workflow in Background
 
-- **o3r_concatenate.sh**: Main script for combining files
-- **o3r_collect_response.sh**: Submits content to O3 web app
-- **o3r_monitor_response.sh**: Monitors for O3 responses
-- **install.sh**: Installs the command system-wide
+```bash
+# Run the entire process in the background
+o3r-run -d ./src -e py
+```
 
-## Requirements
+## 🔄 Workflow
 
-- Mac or Linux
-- For clipboard support:
-  - Mac: pbcopy (built-in)
-  - Linux: xclip
-- For auto-paste feature (optional):
-  - Mac only
-  - O3 desktop app
+1. **Prepare**: o3r combines your source files with proper formatting
+2. **Submit**: The tool copies to clipboard or auto-pastes to O3
+3. **Process**: O3 processes your entire codebase at once
+4. **Collect**: o3r extracts the response when ready
+5. **Integrate**: Apply O3's suggestions to your project
 
-## Contributing
+## 🤝 Contributing
 
-Pull requests are welcome! Please make sure to update tests as appropriate.
+Contributions are welcome! Please feel free to submit a Pull Request.
 
-## License
+## 📄 License
 
-MIT
+This project is licensed under the MIT License - see the LICENSE file for details.
