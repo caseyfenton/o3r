@@ -215,28 +215,62 @@ We're working on integrating intelligent file selection to automatically identif
 
 ### Automated Code Analysis
 
-We've added a code analysis feature that leverages O3 to provide insights about your codebase:
+We're planning a continuous code analysis feature that leverages O3 to provide ongoing insights about your codebase:
 
-- **Smart File Selection**: Prioritizes recently modified files and important code paths
-- **Comprehensive Analysis**: Identifies bugs, optimization opportunities, and quality improvements
-- **Integration with O3R**: Uses the same powerful workflow as the main refactoring tool
-- **Actionable Insights**: Provides specific file/line references and concrete solutions
+- **Background Monitoring**: Automatically analyze your code on schedule or when files change
+- **Intelligent Insights**: Receive suggestions for improvements, potential bugs, and optimization opportunities
+- **Integration with BGRun**: Load insights directly into your coding environment as you work
+- **Contextual Awareness**: Make LLMs aware of O3's higher-level insights about your codebase
 
-The `o3r_analyze.sh` script prepares your codebase for analysis and manages the interaction with O3:
+#### Implementation Plan
+
+1. Create a daemon script that watches for file changes or runs on a schedule
+2. Periodically collect relevant files based on configurable rules
+3. Submit to O3 with analysis-focused prompts (different from refactoring prompts)
+4. Parse and store insights in a structured format
+5. Expose insights via API or file interface for integration with coding tools
+
+This will create a feedback loop where your most capable model (O3) continuously analyzes your code in the background, while your everyday coding assistant remains aware of these insights.
+
+### BGRun Integration
+
+We've implemented integration with the BGRun tool to make O3's code analysis insights available directly to LLMs during your coding sessions:
+
+- **Automatic Widget Creation**: O3 insights appear as widgets in your `.windsurfrules` file
+- **Scheduled Analysis**: Set custom intervals for background code analysis (hourly, daily, etc.)
+- **Contextual Awareness**: Your LLM assistant automatically sees the insights when coding
+
+#### Usage
 
 ```bash
-# Basic usage
-./o3r_analyze.sh -d ./src -e js,ts
+# Setup automated analysis with default settings (4-hour interval)
+./o3r_bgrun_integration.sh
 
-# Analyze a specific directory with custom output location
-./o3r_analyze.sh -d ./backend -e py -o ./analysis-results
+# Analyze only Python files in src directory every 12 hours
+./o3r_bgrun_integration.sh -d ./src -e py -i 12h
+
+# Run once and show current insights
+./o3r_bgrun_integration.sh -1 -s
 ```
 
-This tool helps you get expert-level insights about your code quality, security, and architecture from O3's advanced capabilities.
+#### Options
 
-### Implementation Plan
+- `-d DIR` - Project directory to analyze (default: current directory)
+- `-e EXTS` - File extensions to analyze (default: py,js,ts,go)
+- `-i INTERVAL` - Check interval like 30m, 4h, 1d (default: 4h)
+- `-n MAX` - Maximum number of files to analyze at once (default: 10)
+- `-w NAME` - Custom widget name (default: o3r-insights)
+- `-s` - Show current insights without starting analysis
+- `-1` - Run analysis once and exit (no background monitoring)
 
-In the future, we plan to extend this with:
+#### How It Works
+
+1. The integration script uses `o3r_analyze.sh` to periodically analyze your code
+2. Analysis results are formatted into concise summaries
+3. BGRun creates or updates a widget in `.windsurfrules` with the insights
+4. Your LLM coding assistant automatically sees these insights during your coding sessions
+
+This creates a seamless experience where O3's powerful analytical capabilities continuously inform your everyday coding assistant.
 
 ## 🤝 Contributing
 
