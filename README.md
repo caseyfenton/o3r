@@ -213,6 +213,25 @@ We're working on integrating intelligent file selection to automatically identif
 - Project configuration files for recurring refactoring tasks
 - Expanded language support
 
+### Automated Code Analysis
+
+We're planning a continuous code analysis feature that leverages O3 to provide ongoing insights about your codebase:
+
+- **Background Monitoring**: Automatically analyze your code on schedule or when files change
+- **Intelligent Insights**: Receive suggestions for improvements, potential bugs, and optimization opportunities
+- **Integration with BGRun**: Load insights directly into your coding environment as you work
+- **Contextual Awareness**: Make LLMs aware of O3's higher-level insights about your codebase
+
+#### Implementation Plan
+
+1. Create a daemon script that watches for file changes or runs on a schedule
+2. Periodically collect relevant files based on configurable rules
+3. Submit to O3 with analysis-focused prompts (different from refactoring prompts)
+4. Parse and store insights in a structured format
+5. Expose insights via API or file interface for integration with coding tools
+
+This will create a feedback loop where your most capable model (O3) continuously analyzes your code in the background, while your everyday coding assistant remains aware of these insights.
+
 ## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
