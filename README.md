@@ -215,22 +215,28 @@ We're working on integrating intelligent file selection to automatically identif
 
 ### Automated Code Analysis
 
-We're planning a continuous code analysis feature that leverages O3 to provide ongoing insights about your codebase:
+We've added a code analysis feature that leverages O3 to provide insights about your codebase:
 
-- **Background Monitoring**: Automatically analyze your code on schedule or when files change
-- **Intelligent Insights**: Receive suggestions for improvements, potential bugs, and optimization opportunities
-- **Integration with BGRun**: Load insights directly into your coding environment as you work
-- **Contextual Awareness**: Make LLMs aware of O3's higher-level insights about your codebase
+- **Smart File Selection**: Prioritizes recently modified files and important code paths
+- **Comprehensive Analysis**: Identifies bugs, optimization opportunities, and quality improvements
+- **Integration with O3R**: Uses the same powerful workflow as the main refactoring tool
+- **Actionable Insights**: Provides specific file/line references and concrete solutions
 
-#### Implementation Plan
+The `o3r_analyze.sh` script prepares your codebase for analysis and manages the interaction with O3:
 
-1. Create a daemon script that watches for file changes or runs on a schedule
-2. Periodically collect relevant files based on configurable rules
-3. Submit to O3 with analysis-focused prompts (different from refactoring prompts)
-4. Parse and store insights in a structured format
-5. Expose insights via API or file interface for integration with coding tools
+```bash
+# Basic usage
+./o3r_analyze.sh -d ./src -e js,ts
 
-This will create a feedback loop where your most capable model (O3) continuously analyzes your code in the background, while your everyday coding assistant remains aware of these insights.
+# Analyze a specific directory with custom output location
+./o3r_analyze.sh -d ./backend -e py -o ./analysis-results
+```
+
+This tool helps you get expert-level insights about your code quality, security, and architecture from O3's advanced capabilities.
+
+### Implementation Plan
+
+In the future, we plan to extend this with:
 
 ## 🤝 Contributing
 
