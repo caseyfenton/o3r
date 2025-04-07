@@ -87,7 +87,20 @@ o3r -d ./src -e js,ts
 o3r -f my_files.txt
 ```
 
-### Advanced Usage
+### Command Options Explained
+
+The main command `o3r` takes the following options:
+
+- `-d DIR` : **Directory** - Process all matching files in the specified directory (recursively)
+- `-f FILE` : **File List** - Read list of files from the specified file
+- `-e EXTS` : **Extensions** - Comma-separated list of file extensions to include (default: py,js,ts,go)
+- `-o FILE` : **Output** - Write output to a file instead of clipboard
+- `-p` : **Paste** - Auto-paste to O3 web app (Mac only)
+- `-m` : **Monitor** - Auto-monitor for responses after submission (Mac only)
+- `-i SECS` : **Interval** - Check interval for monitoring in seconds (default: 30)
+- `-t SECS` : **Timeout** - Maximum wait time for monitoring in seconds (default: 300)
+
+### Advanced Usage Examples
 
 ```bash
 # Auto-paste to O3 web app
@@ -101,9 +114,17 @@ o3r -d ./src -e py -o refactor_request.txt
 
 # Set custom monitoring intervals (check every 10 seconds for 5 minutes)
 o3r -d ./src -e py -p -m -i 10 -t 300
+
+# Process multiple directories
+o3r -d "src/core,tests" -e py
+
+# Use with file list from standard input
+echo -e "file1.py\nfile2.py" | o3r -f -
 ```
 
-### Collecting Responses
+### Response Collection
+
+Once your code has been processed by O3, you can collect the response using:
 
 ```bash
 # Collect the full response from O3
@@ -113,20 +134,84 @@ o3r-collect collect
 o3r-collect code
 ```
 
-### Complete Workflow in Background
+## 🛠️ Customizing the Prompt
 
-```bash
-# Run the entire process in the background
-o3r-run -d ./src -e py
+The default prompt instructs O3 to refactor code to be more vertically compressed and efficient while maintaining functionality. You can customize this prompt by editing the `o3r.sh` script:
+
+1. Locate the `generate_content()` function in `/path/to/o3r/o3r.sh`
+2. Find the section that begins with `### REFACTORING INSTRUCTIONS ###`
+3. Modify these instructions to suit your specific needs
+
+### Default Prompt
+
+```markdown
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
 ```
 
-## 🔄 Workflow
+You can modify this prompt to request different refactoring styles, add features, fix bugs, or explain code.
 
-1. **Prepare**: o3r combines your source files with proper formatting
-2. **Submit**: The tool copies to clipboard or auto-pastes to O3
-3. **Process**: O3 processes your entire codebase at once
-4. **Collect**: o3r extracts the response when ready
-5. **Integrate**: Apply O3's suggestions to your project
+### Example Alternative Prompts
+
+#### Add Type Hints
+
+```markdown
+### REFACTORING INSTRUCTIONS ###
+Add comprehensive type hints to this Python codebase while maintaining functionality:
+1. Add appropriate type annotations to all function parameters and return values
+2. Use typing module for complex types (List, Dict, Optional, etc.)
+3. Preserve existing docstrings and extend them with type information
+4. DO NOT change the logic or functionality of the code
+```
+
+#### Performance Optimization
+
+```markdown
+### REFACTORING INSTRUCTIONS ###
+Optimize this codebase for better performance:
+1. Identify and fix performance bottlenecks
+2. Use more efficient algorithms and data structures where appropriate
+3. Minimize redundant operations and memory usage
+4. Add comments explaining the performance improvements
+5. Maintain the same API and functionality
+```
+
+## 🚧 Future Plans
+
+This project is actively evolving with several enhancements planned:
+
+### AI-Assisted File Selection
+
+We're working on integrating intelligent file selection to automatically identify the most relevant files for refactoring:
+
+- Use AI to analyze project structure and determine entry points
+- Identify core files and dependencies based on import graphs
+- Prioritize files based on complexity and refactoring potential
+- Optimize token usage by focusing on the most impactful files
+
+### Enhanced Workflow Integration
+
+- Integration with popular IDEs and editors
+- Support for diff-based application of changes
+- Automatic test running after refactoring
+- Version control integration
+
+### Additional Features
+
+- Support for custom templates and prompt libraries
+- Project configuration files for recurring refactoring tasks
+- Expanded language support
 
 ## 🤝 Contributing
 
