@@ -1,0 +1,910 @@
+Scanning directory . for .sh files...
+Adding ./install.sh...
+Adding ./o3r.sh...
+Adding ./o3r_background.sh...
+Adding ./o3r_collect_response.sh...
+Adding ./o3r_monitor_response.sh...
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+
+```sh
+# FILE: ./install.sh
+#!/usr/bin/env bash
+# O3R Installer Script
+# Installs the commands globally
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+O3R_SCRIPT="$SCRIPT_DIR/o3r"
+MAIN_SCRIPT="$SCRIPT_DIR/o3r.sh"
+COLLECT_SCRIPT="$SCRIPT_DIR/o3r_collect_response.sh"
+MONITOR_SCRIPT="$SCRIPT_DIR/o3r_monitor_response.sh"
+BACKGROUND_SCRIPT="$SCRIPT_DIR/o3r_background.sh"
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+function print_message {
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
+}
+
+function command_exists {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Create wrapper scripts
+cat > "$O3R_SCRIPT" << EOF
+#!/usr/bin/env bash
+# Direct o3r CLI wrapper script
+# Installed path: $SCRIPT_DIR
+
+# Use absolute paths to ensure command works from anywhere
+exec "$MAIN_SCRIPT" "\$@"
+EOF
+chmod +x "$O3R_SCRIPT"
+
+# Check for required commands
+if ! command_exists pbcopy && ! command_exists xclip; then
+    print_message "$YELLOW" "Warning: Neither pbcopy (Mac) nor xclip (Linux) found. Clipboard features will be disabled."
+fi
+
+# Determine installation directories
+INSTALL_DIRS=()
+
+# Check for user bin directory (like bgrun)
+if [ -d "$HOME/bin" ]; then
+    INSTALL_DIRS+=("$HOME/bin")
+fi
+
+# Check for local bin directory (like askp)
+if [ -d "$HOME/.local/bin" ]; then
+    INSTALL_DIRS+=("$HOME/.local/bin")
+elif [ -w "/usr/local/bin" ]; then
+    INSTALL_DIRS+=("/usr/local/bin")
+fi
+
+# Create .local/bin if no installation directories found
+if [ ${#INSTALL_DIRS[@]} -eq 0 ]; then
+    mkdir -p "$HOME/.local/bin"
+    INSTALL_DIRS+=("$HOME/.local/bin")
+fi
+
+# Create symlinks for all commands
+for INSTALL_DIR in "${INSTALL_DIRS[@]}"; do
+    # Main o3r command
+    ln -sf "$O3R_SCRIPT" "$INSTALL_DIR/o3r"
+    
+    # O3R automation commands
+    ln -sf "$COLLECT_SCRIPT" "$INSTALL_DIR/o3r-collect"
+    ln -sf "$MONITOR_SCRIPT" "$INSTALL_DIR/o3r-monitor"
+    ln -sf "$BACKGROUND_SCRIPT" "$INSTALL_DIR/o3r-run"
+    
+    print_message "$GREEN" "✓ Commands installed to $INSTALL_DIR"
+done
+
+print_message "$GREEN" "✓ O3R installed successfully!"
+print_message "$GREEN" "  The following commands are now available:"
+print_message "$GREEN" "  - o3r          : Prepare code for O3 refactoring"
+print_message "$GREEN" "  - o3r-collect  : Collect response from O3"
+print_message "$GREEN" "  - o3r-monitor  : Monitor for O3 responses"
+print_message "$GREEN" "  - o3r-run      : Run complete O3 workflow in background"
+print_message "$YELLOW" "  Run each command with --help to see usage instructions."
+```
+
+```sh
+# FILE: ./o3r.sh
+#!/bin/bash
+# FILE: ./o3r.sh
+# Description and help output
+print_help() {
+    cat << 'HELP'
+o3r: Prepare code for O3 refactoring
+
+DESCRIPTION
+    Combines source files into a single document with formatting and 
+    instructions for O3-based refactoring. Copies to clipboard by default.
+
+USAGE
+    o3r [OPTIONS] (-f FILE_LIST | -d DIRECTORY)
+
+OPTIONS
+    -o FILE     Write output to FILE instead of clipboard
+    -f FILE     Read list of files from FILE
+    -d DIR      Process all matching files in DIR recursively
+    -e EXTS     Comma-separated list of extensions (default: py,js,ts,go)
+    -p          Auto-paste to O3 (Mac only)
+    -m          Auto-monitor for responses (Mac only)
+    -i SECONDS  Check interval for monitoring (default: 30)
+    -t SECONDS  Maximum wait time for monitoring (default: 300)
+    -h, --help  Show help message
+
+EXAMPLES
+    o3r -d ./src -e py
+    o3r -d ./src -e py -p
+    o3r -f files.txt -o output.txt
+    o3r -d "src/core,tests" -e py
+
+NOTE
+    Requires 'pbcopy' (Mac) or 'xclip' (Linux) for clipboard
+    Auto-paste (-p) and auto-monitor (-m) only work on macOS with O3 web app
+HELP
+}
+
+[[ $# -eq 0 || "$1" =~ ^-h|--help$ ]] && print_help && exit 0
+
+output_file=""; file_list=""; directory=""; extensions="py,js,ts,go"; auto_paste=false; auto_monitor=false; monitor_interval=30; monitor_maxtime=300
+
+while getopts "o:f:d:e:pmi:t:h" opt; do
+    case $opt in
+        o) output_file="$OPTARG" ;;
+        f) file_list="$OPTARG" ;;
+        d) directory="$OPTARG" ;;
+        e) extensions="$OPTARG" ;;
+        p) auto_paste=true ;;
+        m) auto_monitor=true ;;
+        i) monitor_interval="$OPTARG" ;;
+        t) monitor_maxtime="$OPTARG" ;;
+        h) print_help; exit 0 ;;
+        *) echo "Try 'o3r --help' for more info."; exit 1 ;;
+    esac
+done
+
+[ -z "$file_list" ] && [ -z "$directory" ] && { echo "Error: Provide -f or -d"; exit 1; }
+
+# Function to generate formatted content
+generate_content() {
+    # Create a temp file to check size
+    temp_file=$(mktemp)
+    
+    cat << 'EOL' > "$temp_file"
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+EOL
+    
+    # Process directory input
+    if [ -n "$directory" ]; then
+        IFS=',' read -ra dirs <<< "$directory"
+        for dir in "${dirs[@]}"; do
+            IFS=',' read -ra exts <<< "$extensions"
+            for ext in "${exts[@]}"; do
+                echo "Scanning directory $dir for .$ext files..."
+                find "$dir" -type f -name "*.$ext" | sort | while read -r file; do
+                    echo "Adding $file..."
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                done
+            done
+        done
+    fi
+    
+    # Process file list input
+    if [ -n "$file_list" ]; then
+        if [ "$file_list" = "-" ]; then
+            # Read from stdin
+            while read -r file; do
+                if [ -f "$file" ]; then
+                    echo "Adding $file..."
+                    ext="${file##*.}"
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                else
+                    echo "Warning: File not found - $file"
+                fi
+            done
+        else
+            # Read from file
+            while read -r file; do
+                if [ -f "$file" ]; then
+                    echo "Adding $file..."
+                    ext="${file##*.}"
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                else
+                    echo "Warning: File not found - $file"
+                fi
+            done < "$file_list"
+        fi
+    fi
+    
+    # Add end marker
+    echo -e "\n### END CODEBASE ###\n" >> "$temp_file"
+    
+    # Output the content
+    cat "$temp_file"
+    
+    # Cleanup
+    rm "$temp_file"
+}
+
+# Function to auto-paste to O3
+auto_paste_to_o3() {
+    # Check for macOS
+    if [ "$(uname)" != "Darwin" ]; then
+        echo "Error: Auto-paste only works on macOS"
+        return 1
+    fi
+    
+    # Attempt to find the O3 chrome app
+    # This is a fallback if the o3r_collect_response.sh script doesn't exist
+    osascript <<EOF
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+
+    echo "Content pasted to O3"
+}
+
+# Main output handling
+if [ -n "$output_file" ]; then
+    generate_content > "$output_file"
+    echo "Content saved to $output_file"
+else
+    # Try to use clipboard
+    if command -v pbcopy > /dev/null; then
+        generate_content | pbcopy
+        echo "Content copied to clipboard (Mac)"
+        
+        if $auto_paste; then
+            # Use the web app automation script
+            echo "Opening O3 via web automation..."
+            # Check if the script exists and is executable
+            web_script="$(dirname "$0")/o3r_collect_response.sh"
+            if [ -x "$web_script" ]; then
+                "$web_script"
+                
+                # If auto-monitor is enabled, start monitoring
+                if $auto_monitor; then
+                    monitor_script="$(dirname "$0")/o3r_monitor_response.sh"
+                    if [ -x "$monitor_script" ]; then
+                        echo "Starting response monitoring..."
+                        "$monitor_script" -i "$monitor_interval" -m "$monitor_maxtime"
+                    else
+                        echo "Monitoring not started. You can run it manually when ready."
+                    fi
+                else
+                    echo "Monitoring not enabled. Run the following when ready:"
+                    echo "$(dirname "$0")/o3r_monitor_response.sh"
+                fi
+            else
+                echo "Warning: o3r_collect_response.sh not found or not executable"
+                echo "Falling back to default auto_paste_to_o3 function"
+                auto_paste_to_o3
+            fi
+        fi
+    elif command -v xclip > /dev/null; then
+        generate_content | xclip -selection clipboard
+        echo "Content copied to clipboard (Linux)"
+        $auto_paste && echo "Warning: Auto-paste not supported on Linux"
+    else
+        echo "Error: Install pbcopy (Mac) or xclip (Linux), or use -o"; exit 1
+    fi
+fi```
+
+```sh
+# FILE: ./o3r_background.sh
+#!/bin/bash
+#
+# O3 Background Process
+# Automates the entire O3 workflow in the background
+#
+
+set -e
+
+# Default values
+check_interval=30
+max_wait_time=1800  # 30 minutes
+min_response_size=100
+output_file="o3_response_$(date +%Y%m%d_%H%M%S).txt"
+web_app_path=""
+input_file=""
+
+print_help() {
+    cat << EOF
+o3r_background.sh: Complete O3 workflow automation
+
+DESCRIPTION
+    Runs a complete O3 workflow in the background:
+    1. Opens O3 web app
+    2. Pastes content from file or clipboard
+    3. Submits request
+    4. Periodically checks for response
+    5. Saves response to file when ready
+
+USAGE
+    ./o3r_background.sh [OPTIONS]
+
+OPTIONS
+    -h, --help           Show help message
+    -i, --interval SEC   Check interval in seconds (default: 30)
+    -m, --max-time SEC   Maximum time to wait in seconds (default: 1800)
+    -s, --min-size BYTES Minimum response size to consider valid (default: 100)
+    -f, --file FILE      Input file containing content to submit
+    -o, --output FILE    Save final response to file (default: o3_response_DATE.txt)
+    -a, --app-path PATH  Path to O3 web app (default: auto-detect)
+
+EXAMPLES
+    # Submit content from clipboard
+    ./o3r_background.sh
+
+    # Submit content from file
+    ./o3r_background.sh -f input.txt -o response.txt
+
+    # Custom check interval and timeout
+    ./o3r_background.sh -i 60 -m 3600
+EOF
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            print_help
+            exit 0
+            ;;
+        -i|--interval)
+            check_interval="$2"
+            shift 2
+            ;;
+        -m|--max-time)
+            max_wait_time="$2"
+            shift 2
+            ;;
+        -s|--min-size)
+            min_response_size="$2"
+            shift 2
+            ;;
+        -f|--file)
+            input_file="$2"
+            shift 2
+            ;;
+        -o|--output)
+            output_file="$2"
+            shift 2
+            ;;
+        -a|--app-path)
+            web_app_path="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            print_help
+            exit 1
+            ;;
+    esac
+done
+
+# Auto-detect O3 web app
+auto_detect_web_app() {
+    local apps=(
+        "$HOME/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app"
+    )
+    
+    for app in "${apps[@]}"; do
+        if [ -e "$app" ]; then
+            web_app_path="$app"
+            echo "Found O3 web app: $web_app_path"
+            return 0
+        fi
+    done
+    
+    echo "No O3 web app found. Will use Chrome Dev instead."
+    return 1
+}
+
+# Get clipboard content
+get_clipboard() {
+    if command -v pbpaste > /dev/null; then
+        pbpaste
+    else
+        echo "Error: pbpaste command not found (not on macOS?)" >&2
+        exit 1
+    fi
+}
+
+# Set clipboard content
+set_clipboard() {
+    if command -v pbcopy > /dev/null; then
+        pbcopy
+    else
+        echo "Error: pbcopy command not found (not on macOS?)" >&2
+        exit 1
+    fi
+}
+
+# Submit content to O3
+submit_content() {
+    # Get content from file or clipboard
+    if [ -n "$input_file" ]; then
+        if [ -f "$input_file" ]; then
+            cat "$input_file" | set_clipboard
+            echo "Content loaded from file: $input_file"
+        else
+            echo "Error: Input file not found: $input_file" >&2
+            exit 1
+        fi
+    else
+        echo "Using content from clipboard"
+    fi
+    
+    # Determine app to use
+    if [ -z "$web_app_path" ]; then
+        auto_detect_web_app
+    fi
+    
+    app_name=$(basename "$web_app_path")
+    echo "Opening O3 using web app: $app_name..."
+    
+    # Open app and submit content
+    open -a "$web_app_path"
+    echo "Waiting 3 seconds for app to load..."
+    sleep 3
+    
+    # Paste and submit content
+    osascript <<EOF
+tell application "System Events"
+    keystroke "v" using command down
+    delay 1
+    key code 36 -- Return key
+end tell
+EOF
+    
+    echo "✅ Content submitted to O3 at $(date)"
+    echo "⏳ Monitoring for response..."
+}
+
+# Periodically check for response
+monitor_response() {
+    local start_time=$(date +%s)
+    local end_time=$((start_time + max_wait_time))
+    local check_count=0
+    
+    echo "🔍 Starting response monitoring at $(date)"
+    echo "⏱️  Will check every $check_interval seconds for up to $max_wait_time seconds"
+    echo "💾 Response will be saved to: $output_file"
+    echo "⚡ This is running in the background (PID: $$)"
+    echo "-------------------------------------------------"
+    
+    while [ $(date +%s) -lt $end_time ]; do
+        check_count=$((check_count + 1))
+        local elapsed=$(($(date +%s) - start_time))
+        
+        # Attempt to copy response
+        osascript <<EOF
+tell application "System Events"
+    keystroke "c" using {command down, shift down}
+    delay 1
+end tell
+EOF
+        
+        local response=$(get_clipboard)
+        local response_size=${#response}
+        
+        echo "[Check $check_count] After ${elapsed}s: Response size $response_size bytes"
+        
+        # Check if response is valid
+        if [ $response_size -ge $min_response_size ]; then
+            echo "✅ Valid response detected after $elapsed seconds!"
+            echo "📋 Response size: $response_size bytes"
+            echo "----- RESPONSE PREVIEW (first 200 chars) -----"
+            echo "${response:0:200}"
+            echo "----------------------------------------------"
+            
+            # Save response to file
+            echo "$response" > "$output_file"
+            echo "💾 Full response saved to: $output_file"
+            return 0
+        fi
+        
+        # Wait for next check
+        sleep $check_interval
+    done
+    
+    echo "❌ No valid response detected within $max_wait_time seconds"
+    return 1
+}
+
+# Main workflow
+submit_content
+monitor_response
+
+exit $?
+```
+
+```sh
+# FILE: ./o3r_collect_response.sh
+#!/bin/bash
+# FILE: o3r_collect_response.sh
+# Description: Script to automate interactions with O3 model using Chrome web app
+
+print_help() {
+    cat << 'HELP'
+o3r_collect_response.sh: Interact with O3 and collect responses
+
+DESCRIPTION
+    Opens O3 model using a Chrome web app, pastes content from clipboard,
+    and provides commands to collect responses via keyboard shortcuts.
+
+USAGE
+    ./o3r_collect_response.sh [OPTIONS] [COMMAND]
+
+COMMANDS
+    submit      - Open O3, paste and submit content (default)
+    collect     - Copy the current response with Cmd+Shift+C
+    code        - Copy just the last code block with Cmd+Shift+;
+
+OPTIONS
+    -h, --help     Show help message
+    -w SECONDS     Wait time before pasting (default: 3)
+    -a APP_PATH    Full path to Chrome web app (default: auto-detect)
+
+EXAMPLES
+    ./o3r_collect_response.sh           # Submit content
+    ./o3r_collect_response.sh collect   # Collect response
+    ./o3r_collect_response.sh code      # Collect code block
+HELP
+}
+
+# Check for macOS
+if [ "$(uname)" != "Darwin" ]; then
+    echo "Error: This script only works on macOS"
+    exit 1
+fi
+
+# Default values
+wait_before_paste=3
+command="submit"
+web_app_path=""
+
+# Auto-detect O3 web app
+auto_detect_web_app() {
+    local apps=(
+        "$HOME/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app"
+    )
+    
+    for app in "${apps[@]}"; do
+        if [ -e "$app" ]; then
+            web_app_path="$app"
+            echo "Found O3 web app: $web_app_path"
+            return 0
+        fi
+    done
+    
+    echo "No O3 web app found. Will use Chrome Dev instead."
+    return 1
+}
+
+# Process options
+while getopts "hw:a:" opt; do
+    case $opt in
+        h) print_help; exit 0 ;;
+        w) wait_before_paste="$OPTARG" ;;
+        a) web_app_path="$OPTARG" ;;
+        *) echo "Try './o3r_collect_response.sh --help' for more info."; exit 1 ;;
+    esac
+done
+
+shift $((OPTIND-1))
+[ "$1" ] && command="$1"
+
+# Auto-detect web app if not specified
+if [ -z "$web_app_path" ]; then
+    auto_detect_web_app
+fi
+
+# Submit content to O3
+submit_content() {
+    echo "Opening O3 and submitting content..."
+    
+    # Wait to ensure app is fully open
+    sleep "$wait_before_paste"
+    
+    # Submit clipboard content to web app
+    if [ -n "$web_app_path" ] && [ -e "$web_app_path" ]; then
+        osascript << EOF
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    # Paste clipboard content
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+    else
+        osascript << EOF
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    # Paste clipboard content
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+    fi
+    
+    echo "✅ Content submitted to O3"
+    echo "⏳ Waiting for response..."
+    echo "📋 When ready, run: $0 collect"
+    echo "📊 For code blocks only, run: $0 code"
+}
+
+# Modified collect_response function to use keyboard shortcuts
+collect_response() {
+    local app_id="$1"
+    local app_name="$2"
+    local response_type="$3"
+    
+    echo "Collecting response from O3 model..."
+    
+    if [ "$response_type" = "code" ]; then
+        # Extract only code blocks
+        osascript << EOF
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    tell application process "$app_id"
+        set frontmost to true
+        delay 1
+        keystroke ";" using {command down, shift down}
+        delay 1
+    end tell
+end tell
+EOF
+        echo "✅ Code blocks collected from O3 response"
+        
+        # Show preview of collected content
+        if command -v pbpaste > /dev/null; then
+            code=$(pbpaste)
+            echo "------- CODE BLOCK PREVIEW -------"
+            echo "${code:0:200}..."
+            echo "----------------------------------"
+            echo "Full code block in clipboard (${#code} characters)"
+        fi
+    else
+        # Collect full response
+        osascript << EOF
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    tell application process "$app_id"
+        set frontmost to true
+        delay 1
+        keystroke "c" using {command down, shift down}
+        delay 1
+    end tell
+end tell
+EOF
+        echo "✅ Full response collected from O3"
+        
+        # Show preview of collected content
+        if command -v pbpaste > /dev/null; then
+            response=$(pbpaste)
+            echo "------- RESPONSE PREVIEW -------"
+            echo "${response:0:200}..."
+            echo "--------------------------------"
+            echo "Full response in clipboard (${#response} characters)"
+        fi
+    fi
+}
+
+case "$command" in
+    submit)
+        submit_content
+        ;;
+    collect)
+        collect_response "$(basename "$web_app_path")" "$(basename "$web_app_path")" "full"
+        ;;
+    code)
+        collect_response "$(basename "$web_app_path")" "$(basename "$web_app_path")" "code"
+        ;;
+    *)
+        echo "Unknown command: $command"
+        print_help
+        exit 1
+        ;;
+esac
+
+exit 0
+```
+
+```sh
+# FILE: ./o3r_monitor_response.sh
+#!/bin/bash
+# FILE: o3r_monitor_response.sh
+# Description: Monitor for O3 response at regular intervals in Chrome web app
+
+print_help() {
+    cat << 'HELP'
+o3r_monitor_response.sh: Monitor for O3 responses
+
+DESCRIPTION
+    Periodically checks for O3 responses in a Chrome web app until 
+    a valid response is detected or the maximum time limit is reached.
+    IMPORTANT: This script assumes O3 is already open in a Chrome web app!
+
+USAGE
+    ./o3r_monitor_response.sh [OPTIONS]
+
+OPTIONS
+    -h, --help           Show help message
+    -i, --interval SEC   Check interval in seconds (default: 30)
+    -m, --max-time SEC   Maximum time to wait in seconds (default: 300)
+    -s, --min-size BYTES Minimum response size to consider valid (default: 20)
+    -o, --output FILE    Save final response to file
+    -a, --app-path PATH  Path to O3 web app (default: auto-detect)
+
+EXAMPLES
+    ./o3r_monitor_response.sh
+    ./o3r_monitor_response.sh -i 5 -m 600
+    ./o3r_monitor_response.sh --interval 15 --max-time 900 --output response.txt
+HELP
+}
+
+# Default values
+check_interval=30
+max_wait_time=300
+min_response_size=20
+output_file=""
+web_app_path=""
+
+# Auto-detect O3 web app
+auto_detect_web_app() {
+    local apps=(
+        "$HOME/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app"
+    )
+    
+    for app in "${apps[@]}"; do
+        if [ -e "$app" ]; then
+            web_app_path="$app"
+            echo "Found O3 web app: $web_app_path"
+            return 0
+        fi
+    done
+    
+    echo "No O3 web app found. Will use Chrome Dev instead."
+    return 1
+}
+
+# Process options
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) print_help; exit 0 ;;
+        -i|--interval) check_interval="$2"; shift ;;
+        -m|--max-time) max_wait_time="$2"; shift ;;
+        -s|--min-size) min_response_size="$2"; shift ;;
+        -o|--output) output_file="$2"; shift ;;
+        -a|--app-path) web_app_path="$2"; shift ;;
+        *) echo "Unknown parameter: $1"; print_help; exit 1 ;;
+    esac
+    shift
+done
+
+# Check for macOS
+if [ "$(uname)" != "Darwin" ]; then
+    echo "Error: This script only works on macOS"
+    exit 1
+fi
+
+# Auto-detect web app if not specified
+if [ -z "$web_app_path" ]; then
+    auto_detect_web_app
+fi
+
+# Start time tracking
+start_time=$(date +%s)
+end_time=$((start_time + max_wait_time))
+check_count=0
+response_size=0
+
+# Start monitoring
+echo "🔍 Starting response monitoring at $(date)"
+echo "⏱️  Will check every ${check_interval} seconds for up to ${max_wait_time} seconds"
+echo "⚡ Press Ctrl+C to cancel monitoring at any time"
+echo "-------------------------------------------------"
+
+while [ $(date +%s) -lt $end_time ]; do
+    # Increment check counter
+    check_count=$((check_count + 1))
+    
+    # Calculate elapsed time
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+    
+    # Attempt to collect response using the appropriate app
+    if [ -n "$web_app_path" ] && [ -e "$web_app_path" ]; then
+        osascript << EOF > /dev/null
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    keystroke "c" using {command down, shift down}
+end tell
+EOF
+    else
+        osascript << EOF > /dev/null
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    keystroke "c" using {command down, shift down}
+end tell
+EOF
+    fi
+    
+    # Check clipboard content size
+    if command -v pbpaste > /dev/null; then
+        response=$(pbpaste)
+        response_size=${#response}
+        
+        echo "[Check $check_count] After ${elapsed}s: Response size ${response_size} bytes"
+        
+        # If response is large enough, consider it valid
+        if [ $response_size -gt $min_response_size ]; then
+            echo "✅ Valid response detected after ${elapsed} seconds!"
+            echo "📋 Response size: ${response_size} bytes"
+            
+            # Save to file if requested
+            if [ -n "$output_file" ]; then
+                echo "$response" > "$output_file"
+                echo "💾 Response saved to ${output_file}"
+            fi
+            
+            # Show preview
+            echo "----- RESPONSE PREVIEW (first 200 chars) -----"
+            echo "${response:0:200}"
+            echo "----------------------------------------------"
+            echo "Full response is in clipboard"
+            
+            exit 0
+        fi
+    fi
+    
+    # Wait before checking again
+    sleep $check_interval
+done
+
+# If we get here, we timed out
+echo "⏰ Timeout after ${max_wait_time} seconds"
+echo "No valid response detected after ${check_count} checks"
+exit 1
+```
+
+### END CODEBASE ###
+
