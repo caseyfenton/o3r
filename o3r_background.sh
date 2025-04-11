@@ -103,7 +103,16 @@ auto_detect_web_app() {
         fi
     done
     
-    echo "No O3 web app found. Will use Chrome Dev instead."
+    echo "⚠️ Warning: Chrome App for O3 not found at expected locations."
+    echo "For more reliable operation, please set up the Chrome App as described in the README:"
+    echo "1. Open Chrome"
+    echo "2. Navigate to https://chat.openai.com/?model=o3-mini-high"
+    echo "3. Click menu (three dots) → More tools → Create shortcut"
+    echo "4. Check 'Open as window' option"
+    echo "5. Name it 'ChatGPT-o3-mini-high'"
+    echo "6. Click Create"
+    echo ""
+    echo "Falling back to Chrome Dev, but this may be less reliable for automation."
     return 1
 }
 

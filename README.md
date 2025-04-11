@@ -72,6 +72,19 @@ This will install the following commands:
 - `o3r-monitor`: Tool for monitoring O3 for responses
 - `o3r-run`: All-in-one background tool for the complete O3 workflow
 
+### Chrome App Setup (Required for Auto-paste and Monitoring)
+
+For the auto-paste and monitoring features to work reliably, you need to create a Chrome App for O3:
+
+1. Open Chrome
+2. Navigate to https://chat.openai.com/?model=o3-mini-high
+3. Click menu (three dots) → More tools → Create shortcut
+4. Check "Open as window" option
+5. Name it "ChatGPT-o3-mini-high" (important to match exactly what the scripts look for)
+6. Click Create
+
+This creates a dedicated window that the scripts can reliably target for automation.
+
 ## 📖 Usage
 
 ### Basic Usage
@@ -134,59 +147,6 @@ o3r-collect collect
 o3r-collect code
 ```
 
-## 🛠️ Customizing the Prompt
-
-The default prompt instructs O3 to refactor code to be more vertically compressed and efficient while maintaining functionality. You can customize this prompt by editing the `o3r.sh` script:
-
-1. Locate the `generate_content()` function in `/path/to/o3r/o3r.sh`
-2. Find the section that begins with `### REFACTORING INSTRUCTIONS ###`
-3. Modify these instructions to suit your specific needs
-
-### Default Prompt
-
-```markdown
-### REFACTORING INSTRUCTIONS ###
-Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
-1. Combine related functions, variables, and imports on single lines where logical
-2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
-3. Merge similar logic and remove redundant code
-4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
-   - Success messages
-   - Error messages
-   - API responses
-   - Log messages
-   - Test assertions
-5. Preserve docstrings and comments that explain complex logic
-6. Maintain the same imports, just organize them better
-```
-
-You can modify this prompt to request different refactoring styles, add features, fix bugs, or explain code.
-
-### Example Alternative Prompts
-
-#### Add Type Hints
-
-```markdown
-### REFACTORING INSTRUCTIONS ###
-Add comprehensive type hints to this Python codebase while maintaining functionality:
-1. Add appropriate type annotations to all function parameters and return values
-2. Use typing module for complex types (List, Dict, Optional, etc.)
-3. Preserve existing docstrings and extend them with type information
-4. DO NOT change the logic or functionality of the code
-```
-
-#### Performance Optimization
-
-```markdown
-### REFACTORING INSTRUCTIONS ###
-Optimize this codebase for better performance:
-1. Identify and fix performance bottlenecks
-2. Use more efficient algorithms and data structures where appropriate
-3. Minimize redundant operations and memory usage
-4. Add comments explaining the performance improvements
-5. Maintain the same API and functionality
-```
-
 ## 🚧 Future Plans
 
 This project is actively evolving with several enhancements planned:
@@ -206,6 +166,8 @@ We're working on integrating intelligent file selection to automatically identif
 - Support for diff-based application of changes
 - Automatic test running after refactoring
 - Version control integration
+- Improved browser automation that doesn't rely on Chrome Apps
+- Cross-platform window targeting for more reliable automation
 
 ### Additional Features
 

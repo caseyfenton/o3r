@@ -1,0 +1,7 @@
+Found O3 web app: /Users/casey/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app
+Collecting response from O3 model...
+✅ Code blocks collected from O3 response
+------- CODE BLOCK PREVIEW -------
+...
+----------------------------------
+Full code block in clipboard (0 characters)

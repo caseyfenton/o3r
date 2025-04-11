@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Direct o3r CLI wrapper script
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_SCRIPT="$SCRIPT_DIR/o3r.sh"
+
+# Use script location to ensure command works from anywhere
+if [ ! -x "$MAIN_SCRIPT" ]; then
+    echo "Error: Could not find o3r main script at $MAIN_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$MAIN_SCRIPT" "$@"

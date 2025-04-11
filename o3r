@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Direct o3r CLI wrapper script
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Use absolute paths to ensure command works from anywhere
+if [ ! -x "/Users/casey/CascadeProjects/o3r/o3r.sh" ]; then
+    echo "Error: Could not find o3r main script at /Users/casey/CascadeProjects/o3r/o3r.sh"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "/Users/casey/CascadeProjects/o3r/o3r.sh" "$@"

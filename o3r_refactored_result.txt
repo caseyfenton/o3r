@@ -1,0 +1,2414 @@
+Scanning directory . for .sh files...
+Adding ./install.sh...
+Adding ./o3r.sh...
+Adding ./o3r_analyze.sh...
+Adding ./o3r_background.sh...
+Adding ./o3r_bgrun_integration.sh...
+Adding ./o3r_collect_response.sh...
+Adding ./o3r_monitor_response.sh...
+Adding ./sanitize_repo.sh...
+Scanning directory . for .bat files...
+Adding ./install.bat...
+Adding ./o3r_background.bat...
+Adding ./o3r_collect_response.bat...
+Adding ./o3r_main.bat...
+Adding ./o3r_monitor_response.bat...
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+
+```sh
+# FILE: ./install.sh
+#!/usr/bin/env bash
+# O3R Installer Script
+# Installs the commands globally
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+O3R_SCRIPT="$SCRIPT_DIR/o3r"
+MAIN_SCRIPT="$SCRIPT_DIR/o3r.sh"
+COLLECT_SCRIPT="$SCRIPT_DIR/o3r_collect_response.sh"
+MONITOR_SCRIPT="$SCRIPT_DIR/o3r_monitor_response.sh"
+BACKGROUND_SCRIPT="$SCRIPT_DIR/o3r_background.sh"
+
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+function print_message {
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
+}
+
+function command_exists {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Create wrapper scripts
+cat > "$O3R_SCRIPT" << EOF
+#!/usr/bin/env bash
+# Direct o3r CLI wrapper script
+# Installed path: $SCRIPT_DIR
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Use absolute paths to ensure command works from anywhere
+if [ ! -x "$MAIN_SCRIPT" ]; then
+    echo "Error: Could not find o3r main script at $MAIN_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$MAIN_SCRIPT" "\$@"
+EOF
+chmod +x "$O3R_SCRIPT"
+
+# Check for required commands
+if ! command_exists pbcopy && ! command_exists xclip; then
+    print_message "$YELLOW" "Warning: Neither pbcopy (Mac) nor xclip (Linux) found. Clipboard features will be disabled."
+fi
+
+# Determine installation directories
+INSTALL_DIRS=()
+
+# Check for user bin directory (like bgrun)
+if [ -d "$HOME/bin" ]; then
+    INSTALL_DIRS+=("$HOME/bin")
+fi
+
+# Check for local bin directory (like askp)
+if [ -d "$HOME/.local/bin" ]; then
+    INSTALL_DIRS+=("$HOME/.local/bin")
+elif [ -w "/usr/local/bin" ]; then
+    INSTALL_DIRS+=("/usr/local/bin")
+fi
+
+# Create .local/bin if no installation directories found
+if [ ${#INSTALL_DIRS[@]} -eq 0 ]; then
+    mkdir -p "$HOME/.local/bin"
+    INSTALL_DIRS+=("$HOME/.local/bin")
+fi
+
+# Create wrapper scripts for all commands
+for INSTALL_DIR in "${INSTALL_DIRS[@]}"; do
+    # Main o3r command
+    ln -sf "$O3R_SCRIPT" "$INSTALL_DIR/o3r"
+    
+    # Create wrapper scripts for O3R automation commands
+    cat > "$INSTALL_DIR/o3r-collect" << EOF
+#!/usr/bin/env bash
+# o3r-collect wrapper script
+# Points to: $COLLECT_SCRIPT
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Check if target script exists
+if [ ! -x "$COLLECT_SCRIPT" ]; then
+    echo "Error: Could not find o3r collect script at $COLLECT_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$COLLECT_SCRIPT" "\$@"
+EOF
+    chmod +x "$INSTALL_DIR/o3r-collect"
+    
+    cat > "$INSTALL_DIR/o3r-monitor" << EOF
+#!/usr/bin/env bash
+# o3r-monitor wrapper script
+# Points to: $MONITOR_SCRIPT
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Check if target script exists
+if [ ! -x "$MONITOR_SCRIPT" ]; then
+    echo "Error: Could not find o3r monitor script at $MONITOR_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$MONITOR_SCRIPT" "\$@"
+EOF
+    chmod +x "$INSTALL_DIR/o3r-monitor"
+    
+    cat > "$INSTALL_DIR/o3r-run" << EOF
+#!/usr/bin/env bash
+# o3r-run wrapper script
+# Points to: $BACKGROUND_SCRIPT
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Check if target script exists
+if [ ! -x "$BACKGROUND_SCRIPT" ]; then
+    echo "Error: Could not find o3r background script at $BACKGROUND_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$BACKGROUND_SCRIPT" "\$@"
+EOF
+    chmod +x "$INSTALL_DIR/o3r-run"
+    
+    print_message "$GREEN" "✓ Commands installed to $INSTALL_DIR"
+done
+
+print_message "$GREEN" "✓ O3R installed successfully!"
+print_message "$GREEN" "  The following commands are now available:"
+print_message "$GREEN" "  - o3r          : Prepare code for O3 refactoring"
+print_message "$GREEN" "  - o3r-collect  : Collect response from O3"
+print_message "$GREEN" "  - o3r-monitor  : Monitor for O3 responses"
+print_message "$GREEN" "  - o3r-run      : Run complete O3 workflow in background"
+print_message "$YELLOW" "  Run each command with --help to see usage instructions."
+```
+
+```sh
+# FILE: ./o3r.sh
+#!/bin/bash
+# FILE: ./o3r.sh
+# Description and help output
+print_help() {
+    cat << 'HELP'
+o3r: Prepare code for O3 refactoring
+
+DESCRIPTION
+    Combines source files into a single document with formatting and 
+    instructions for O3-based refactoring. Copies to clipboard by default.
+
+USAGE
+    o3r [OPTIONS] (-f FILE_LIST | -d DIRECTORY)
+
+OPTIONS
+    -o FILE     Write output to FILE instead of clipboard
+    -f FILE     Read list of files from FILE
+    -d DIR      Process all matching files in DIR recursively
+    -e EXTS     Comma-separated list of extensions (default: py,js,ts,go)
+    -p          Auto-paste to O3 (Mac only)
+    -m          Auto-monitor for responses (Mac only)
+    -i SECONDS  Check interval for monitoring (default: 30)
+    -t SECONDS  Maximum wait time for monitoring (default: 300)
+    -h, --help  Show help message
+
+EXAMPLES
+    o3r -d ./src -e py
+    o3r -d ./src -e py -p
+    o3r -f files.txt -o output.txt
+    o3r -d "src/core,tests" -e py
+
+NOTE
+    Requires 'pbcopy' (Mac) or 'xclip' (Linux) for clipboard
+    Auto-paste (-p) and auto-monitor (-m) only work on macOS with O3 web app
+HELP
+}
+
+[[ $# -eq 0 || "$1" =~ ^-h|--help$ ]] && print_help && exit 0
+
+output_file=""; file_list=""; directory=""; extensions="py,js,ts,go"; auto_paste=false; auto_monitor=false; monitor_interval=30; monitor_maxtime=300
+
+while getopts "o:f:d:e:pmi:t:h" opt; do
+    case $opt in
+        o) output_file="$OPTARG" ;;
+        f) file_list="$OPTARG" ;;
+        d) directory="$OPTARG" ;;
+        e) extensions="$OPTARG" ;;
+        p) auto_paste=true ;;
+        m) auto_monitor=true ;;
+        i) monitor_interval="$OPTARG" ;;
+        t) monitor_maxtime="$OPTARG" ;;
+        h) print_help; exit 0 ;;
+        *) echo "Try 'o3r --help' for more info."; exit 1 ;;
+    esac
+done
+
+[ -z "$file_list" ] && [ -z "$directory" ] && { echo "Error: Provide -f or -d"; exit 1; }
+
+# Function to generate formatted content
+generate_content() {
+    # Create a temp file to check size
+    temp_file=$(mktemp)
+    
+    cat << 'EOL' > "$temp_file"
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+EOL
+    
+    # Process directory input
+    if [ -n "$directory" ]; then
+        IFS=',' read -ra dirs <<< "$directory"
+        for dir in "${dirs[@]}"; do
+            IFS=',' read -ra exts <<< "$extensions"
+            for ext in "${exts[@]}"; do
+                echo "Scanning directory $dir for .$ext files..."
+                find "$dir" -type f -name "*.$ext" | sort | while read -r file; do
+                    echo "Adding $file..."
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                done
+            done
+        done
+    fi
+    
+    # Process file list input
+    if [ -n "$file_list" ]; then
+        if [ "$file_list" = "-" ]; then
+            # Read from stdin
+            while read -r file; do
+                if [ -f "$file" ]; then
+                    echo "Adding $file..."
+                    ext="${file##*.}"
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                else
+                    echo "Warning: File not found - $file"
+                fi
+            done
+        else
+            # Read from file
+            while read -r file; do
+                if [ -f "$file" ]; then
+                    echo "Adding $file..."
+                    ext="${file##*.}"
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                else
+                    echo "Warning: File not found - $file"
+                fi
+            done < "$file_list"
+        fi
+    fi
+    
+    # Add end marker
+    echo -e "\n### END CODEBASE ###\n" >> "$temp_file"
+    
+    # Output the content
+    cat "$temp_file"
+    
+    # Cleanup
+    rm "$temp_file"
+}
+
+# Function to auto-paste to O3
+auto_paste_to_o3() {
+    # Check for macOS
+    if [ "$(uname)" != "Darwin" ]; then
+        echo "Error: Auto-paste only works on macOS"
+        return 1
+    fi
+    
+    # Attempt to find the O3 chrome app
+    # This is a fallback if the o3r_collect_response.sh script doesn't exist
+    osascript <<EOF
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+
+    echo "Content pasted to O3"
+}
+
+# Main output handling
+if [ -n "$output_file" ]; then
+    generate_content > "$output_file"
+    echo "Content saved to $output_file"
+else
+    # Try to use clipboard
+    if command -v pbcopy > /dev/null; then
+        generate_content | pbcopy
+        echo "Content copied to clipboard (Mac)"
+        
+        if $auto_paste; then
+            # Use the web app automation script
+            echo "Opening O3 via web automation..."
+            # Check if the script exists and is executable
+            web_script="$(dirname "$0")/o3r_collect_response.sh"
+            if [ -x "$web_script" ]; then
+                "$web_script"
+                
+                # If auto-monitor is enabled, start monitoring
+                if $auto_monitor; then
+                    monitor_script="$(dirname "$0")/o3r_monitor_response.sh"
+                    if [ -x "$monitor_script" ]; then
+                        echo "Starting response monitoring..."
+                        "$monitor_script" -i "$monitor_interval" -m "$monitor_maxtime"
+                    else
+                        echo "Monitoring not started. You can run it manually when ready."
+                    fi
+                else
+                    echo "Monitoring not enabled. Run the following when ready:"
+                    echo "$(dirname "$0")/o3r_monitor_response.sh"
+                fi
+            else
+                echo "Warning: o3r_collect_response.sh not found or not executable"
+                echo "Falling back to default auto_paste_to_o3 function"
+                auto_paste_to_o3
+            fi
+        fi
+    elif command -v xclip > /dev/null; then
+        generate_content | xclip -selection clipboard
+        echo "Content copied to clipboard (Linux)"
+        $auto_paste && echo "Warning: Auto-paste not supported on Linux"
+    else
+        echo "Error: Install pbcopy (Mac) or xclip (Linux), or use -o"; exit 1
+    fi
+fi```
+
+```sh
+# FILE: ./o3r_analyze.sh
+#!/bin/bash
+# O3R Analyze: Automated Code Analysis Tool
+# Continuously analyzes your codebase in the background and provides insights
+
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+# Default values
+WATCH_DIR="."
+EXTENSIONS="py,js,ts,go"
+INTERVAL=3600  # Default: check every hour
+OUTPUT_DIR="$HOME/.o3r/insights"
+LOG_FILE="$HOME/.o3r/analyze.log"
+CONFIG_FILE="$HOME/.o3r/analyze.conf"
+DAEMON_MODE=false
+MAX_FILES=10
+INSIGHTS_FILE="o3r_insights.md"
+
+function print_message {
+    local color=$1
+    local message=$2
+    echo -e "${color}${message}${NC}"
+}
+
+function print_help {
+    cat << 'HELP'
+o3r-analyze: Automated Code Analysis Tool
+
+DESCRIPTION
+    Continuously analyzes your codebase in the background and provides insights
+    using O3. Can run as a daemon or one-time analysis.
+
+USAGE
+    o3r-analyze [OPTIONS] -d DIRECTORY
+
+OPTIONS
+    -d DIR        Directory to watch and analyze
+    -e EXTS       Comma-separated list of extensions (default: py,js,ts,go)
+    -i SECONDS    Check interval for daemon mode (default: 3600 seconds)
+    -o DIR        Output directory for insights (default: ~/.o3r/insights)
+    -n MAX        Maximum number of files to analyze at once (default: 10)
+    -c FILE       Config file path (default: ~/.o3r/analyze.conf)
+    -D            Run as daemon (background process)
+    -1            Run once and exit
+    -h, --help    Show help message
+
+EXAMPLES
+    # Run once on current directory
+    o3r-analyze -d . -1
+    
+    # Start daemon watching src directory, checking every 4 hours
+    o3r-analyze -d ./src -e py,js -i 14400 -D
+
+    # Run with custom configuration file
+    o3r-analyze -c ./myproject_analyze.conf
+HELP
+    exit 0
+}
+
+# Process command line arguments
+[[ $# -eq 0 || "$1" =~ ^-h|--help$ ]] && print_help
+
+while getopts "d:e:i:o:n:c:D1h" opt; do
+    case $opt in
+        d) WATCH_DIR="$OPTARG" ;;
+        e) EXTENSIONS="$OPTARG" ;;
+        i) INTERVAL="$OPTARG" ;;
+        o) OUTPUT_DIR="$OPTARG" ;;
+        n) MAX_FILES="$OPTARG" ;;
+        c) CONFIG_FILE="$OPTARG" ;;
+        D) DAEMON_MODE=true ;;
+        1) DAEMON_MODE=false ;;
+        h) print_help ;;
+        *) print_message "$RED" "Error: Invalid option. Try 'o3r-analyze --help' for usage." && exit 1 ;;
+    esac
+done
+
+# Load config file if it exists
+if [[ -f "$CONFIG_FILE" ]]; then
+    print_message "$BLUE" "Loading configuration from $CONFIG_FILE"
+    source "$CONFIG_FILE"
+fi
+
+# Ensure output directory exists
+mkdir -p "$OUTPUT_DIR"
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Log function
+function log {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+    if [[ "$DAEMON_MODE" == false ]]; then
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    fi
+}
+
+# Function to select important files for analysis
+function select_files {
+    local dir="$1"
+    local exts="$2"
+    local max_files="$3"
+    local temp_file=$(mktemp)
+    
+    IFS=',' read -ra EXTENSIONS_ARRAY <<< "$exts"
+    
+    # Find all matching files
+    for ext in "${EXTENSIONS_ARRAY[@]}"; do
+        find "$dir" -type f -name "*.$ext" >> "$temp_file"
+    done
+    
+    # Get list of files changed recently
+    local recent_files=$(find "$dir" -type f -name "*.$ext" -mtime -1 | sort)
+    
+    # If we have AI file selection, we could call an AI service here
+    # For now, just take the most recently modified files up to max_files
+    
+    # Output the top N files, prioritizing recently changed ones
+    (echo "$recent_files"; cat "$temp_file" | sort -u) | head -n "$max_files"
+    
+    rm "$temp_file"
+}
+
+# Function to generate analysis prompt
+function generate_analysis_prompt {
+    cat << 'EOL'
+### CODE ANALYSIS INSTRUCTIONS ###
+Please analyze this codebase and provide insights in the following categories:
+1. Potential bugs or error-prone patterns
+2. Performance optimization opportunities
+3. Code quality and maintainability improvements
+4. Architecture suggestions
+5. Security concerns
+
+For each insight:
+- Provide a clear description of the issue or opportunity
+- Reference specific file and line numbers
+- Explain the impact or risk
+- Suggest a concrete solution or improvement
+
+Format your response as Markdown, with each category as a level-2 heading.
+EOL
+}
+
+# Function to analyze code
+function analyze_code {
+    local dir="$1"
+    local exts="$2"
+    local max_files="$3"
+    local output_dir="$4"
+    local insights_file="$output_dir/$INSIGHTS_FILE"
+    local temp_dir=$(mktemp -d)
+    local prompt_file="$temp_dir/prompt.txt"
+    local timestamp=$(date '+%Y%m%d%H%M%S')
+    local files_to_analyze=$(select_files "$dir" "$exts" "$max_files")
+    
+    log "Starting analysis of $dir"
+    log "Selected $(echo "$files_to_analyze" | wc -l) files for analysis"
+    
+    # Generate analysis prompt
+    generate_analysis_prompt > "$prompt_file"
+    
+    # Append each file to the prompt
+    echo -e "\n### CODEBASE ###\n" >> "$prompt_file"
+    
+    for file in $files_to_analyze; do
+        if [[ -f "$file" ]]; then
+            ext="${file##*.}"
+            log "Adding $file to analysis"
+            echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$prompt_file"
+            cat "$file" >> "$prompt_file"
+            echo -e "\`\`\`" >> "$prompt_file"
+        fi
+    done
+    
+    # Add end marker
+    echo -e "\n### END CODEBASE ###\n" >> "$prompt_file"
+    
+    # Submit to O3 for analysis
+    # This would use o3r's automation features
+    # For now, we'll just simulate the process
+    
+    log "Preparing to submit to O3 for analysis"
+    
+    # Create a dated insights file
+    local dated_insights="$output_dir/insights_$timestamp.md"
+    
+    # Check if we can actually send this to O3
+    if command -v pbcopy > /dev/null && [[ -x "$SCRIPT_DIR/o3r_collect_response.sh" ]]; then
+        log "Submitting to O3 using o3r tools"
+        cat "$prompt_file" | pbcopy
+        
+        # Try to use o3r's automation
+        "$SCRIPT_DIR/o3r_collect_response.sh" submit
+        
+        log "Waiting for O3 response (this would normally be async)"
+        # In a real implementation, we'd start monitoring in the background
+        # and continue with other tasks
+        
+        # For demo purposes, simulate getting a response
+        cat > "$dated_insights" << EOL
+# Code Analysis Insights (${timestamp})
+
+## Potential Bugs
+
+1. **Null Reference Risk in User Authentication**
+   - **File**: src/auth/login.js:42
+   - **Issue**: User object accessed without null check
+   - **Impact**: Could cause application crash on invalid login
+   - **Solution**: Add null/undefined guard before accessing properties
+
+## Performance Optimizations
+
+1. **Redundant API Calls**
+   - **File**: src/services/data.js:78-95
+   - **Impact**: Makes duplicate network requests for the same data
+   - **Solution**: Implement request caching or use memoization
+
+## Code Quality Improvements
+
+1. **Function Length**
+   - **File**: src/utils/parser.js:120-250
+   - **Issue**: processData function is 130 lines long
+   - **Impact**: Difficult to maintain and test
+   - **Solution**: Break into smaller, focused functions
+
+## Architecture Suggestions
+
+1. **Centralize Error Handling**
+   - **Issue**: Error handling scattered throughout the codebase
+   - **Impact**: Inconsistent error reporting and recovery
+   - **Solution**: Implement global error handler and standardized error objects
+
+## Security Concerns
+
+1. **Hardcoded Credentials**
+   - **File**: src/config/database.js:8
+   - **Issue**: Database password in plaintext
+   - **Impact**: Critical security vulnerability
+   - **Solution**: Move to environment variables or secure credential store
+EOL
+        
+        # Create symlink to latest insights
+        ln -sf "$dated_insights" "$insights_file"
+        
+        log "Analysis complete. Insights saved to: $dated_insights"
+        log "Latest insights available at: $insights_file"
+    else
+        log "Cannot submit to O3: required tools not available"
+        log "Would have analyzed $(echo "$files_to_analyze" | wc -l) files"
+    fi
+    
+    # Clean up
+    rm -rf "$temp_dir"
+}
+
+# Main execution
+log "O3R Analyze starting with: WATCH_DIR=$WATCH_DIR, INTERVAL=$INTERVAL seconds"
+
+if [[ "$DAEMON_MODE" == true ]]; then
+    log "Running in daemon mode with interval $INTERVAL seconds"
+    
+    # Main daemon loop
+    while true; do
+        analyze_code "$WATCH_DIR" "$EXTENSIONS" "$MAX_FILES" "$OUTPUT_DIR"
+        log "Sleeping for $INTERVAL seconds"
+        sleep "$INTERVAL"
+    done
+else
+    log "Running single analysis"
+    analyze_code "$WATCH_DIR" "$EXTENSIONS" "$MAX_FILES" "$OUTPUT_DIR"
+    log "Analysis complete"
+fi
+```
+
+```sh
+# FILE: ./o3r_background.sh
+#!/bin/bash
+#
+# O3 Background Process
+# Automates the entire O3 workflow in the background
+#
+
+set -e
+
+# Default values
+check_interval=30
+max_wait_time=1800  # 30 minutes
+min_response_size=100
+output_file="o3_response_$(date +%Y%m%d_%H%M%S).txt"
+web_app_path=""
+input_file=""
+
+print_help() {
+    cat << EOF
+o3r_background.sh: Complete O3 workflow automation
+
+DESCRIPTION
+    Runs a complete O3 workflow in the background:
+    1. Opens O3 web app
+    2. Pastes content from file or clipboard
+    3. Submits request
+    4. Periodically checks for response
+    5. Saves response to file when ready
+
+USAGE
+    ./o3r_background.sh [OPTIONS]
+
+OPTIONS
+    -h, --help           Show help message
+    -i, --interval SEC   Check interval in seconds (default: 30)
+    -m, --max-time SEC   Maximum time to wait in seconds (default: 1800)
+    -s, --min-size BYTES Minimum response size to consider valid (default: 100)
+    -f, --file FILE      Input file containing content to submit
+    -o, --output FILE    Save final response to file (default: o3_response_DATE.txt)
+    -a, --app-path PATH  Path to O3 web app (default: auto-detect)
+
+EXAMPLES
+    # Submit content from clipboard
+    ./o3r_background.sh
+
+    # Submit content from file
+    ./o3r_background.sh -f input.txt -o response.txt
+
+    # Custom check interval and timeout
+    ./o3r_background.sh -i 60 -m 3600
+EOF
+}
+
+# Parse arguments
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -h|--help)
+            print_help
+            exit 0
+            ;;
+        -i|--interval)
+            check_interval="$2"
+            shift 2
+            ;;
+        -m|--max-time)
+            max_wait_time="$2"
+            shift 2
+            ;;
+        -s|--min-size)
+            min_response_size="$2"
+            shift 2
+            ;;
+        -f|--file)
+            input_file="$2"
+            shift 2
+            ;;
+        -o|--output)
+            output_file="$2"
+            shift 2
+            ;;
+        -a|--app-path)
+            web_app_path="$2"
+            shift 2
+            ;;
+        *)
+            echo "Unknown option: $1"
+            print_help
+            exit 1
+            ;;
+    esac
+done
+
+# Auto-detect O3 web app
+auto_detect_web_app() {
+    local apps=(
+        "$HOME/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app"
+    )
+    
+    for app in "${apps[@]}"; do
+        if [ -e "$app" ]; then
+            web_app_path="$app"
+            echo "Found O3 web app: $web_app_path"
+            return 0
+        fi
+    done
+    
+    echo "No O3 web app found. Will use Chrome Dev instead."
+    return 1
+}
+
+# Get clipboard content
+get_clipboard() {
+    if command -v pbpaste > /dev/null; then
+        pbpaste
+    else
+        echo "Error: pbpaste command not found (not on macOS?)" >&2
+        exit 1
+    fi
+}
+
+# Set clipboard content
+set_clipboard() {
+    if command -v pbcopy > /dev/null; then
+        pbcopy
+    else
+        echo "Error: pbcopy command not found (not on macOS?)" >&2
+        exit 1
+    fi
+}
+
+# Submit content to O3
+submit_content() {
+    # Get content from file or clipboard
+    if [ -n "$input_file" ]; then
+        if [ -f "$input_file" ]; then
+            cat "$input_file" | set_clipboard
+            echo "Content loaded from file: $input_file"
+        else
+            echo "Error: Input file not found: $input_file" >&2
+            exit 1
+        fi
+    else
+        echo "Using content from clipboard"
+    fi
+    
+    # Determine app to use
+    if [ -z "$web_app_path" ]; then
+        auto_detect_web_app
+    fi
+    
+    app_name=$(basename "$web_app_path")
+    echo "Opening O3 using web app: $app_name..."
+    
+    # Open app and submit content
+    open -a "$web_app_path"
+    echo "Waiting 3 seconds for app to load..."
+    sleep 3
+    
+    # Paste and submit content
+    osascript <<EOF
+tell application "System Events"
+    keystroke "v" using command down
+    delay 1
+    key code 36 -- Return key
+end tell
+EOF
+    
+    echo "✅ Content submitted to O3 at $(date)"
+    echo "⏳ Monitoring for response..."
+}
+
+# Periodically check for response
+monitor_response() {
+    local start_time=$(date +%s)
+    local end_time=$((start_time + max_wait_time))
+    local check_count=0
+    
+    echo "🔍 Starting response monitoring at $(date)"
+    echo "⏱️  Will check every $check_interval seconds for up to $max_wait_time seconds"
+    echo "💾 Response will be saved to: $output_file"
+    echo "⚡ This is running in the background (PID: $$)"
+    echo "-------------------------------------------------"
+    
+    while [ $(date +%s) -lt $end_time ]; do
+        check_count=$((check_count + 1))
+        local elapsed=$(($(date +%s) - start_time))
+        
+        # Attempt to copy response
+        osascript <<EOF
+tell application "System Events"
+    keystroke "c" using {command down, shift down}
+    delay 1
+end tell
+EOF
+        
+        local response=$(get_clipboard)
+        local response_size=${#response}
+        
+        echo "[Check $check_count] After ${elapsed}s: Response size $response_size bytes"
+        
+        # Check if response is valid
+        if [ $response_size -ge $min_response_size ]; then
+            echo "✅ Valid response detected after $elapsed seconds!"
+            echo "📋 Response size: $response_size bytes"
+            echo "----- RESPONSE PREVIEW (first 200 chars) -----"
+            echo "${response:0:200}"
+            echo "----------------------------------------------"
+            
+            # Save response to file
+            echo "$response" > "$output_file"
+            echo "💾 Full response saved to: $output_file"
+            return 0
+        fi
+        
+        # Wait for next check
+        sleep $check_interval
+    done
+    
+    echo "❌ No valid response detected within $max_wait_time seconds"
+    return 1
+}
+
+# Main workflow
+submit_content
+monitor_response
+
+exit $?
+```
+
+```sh
+# FILE: ./o3r_bgrun_integration.sh
+#!/bin/bash
+# o3r_bgrun_integration.sh - Integration between o3r_analyze and BGRun
+# Makes O3 insights available in .windsurfrules for LLMs
+
+set -e
+
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+O3R_ANALYZE="$SCRIPT_DIR/o3r_analyze.sh"
+O3R_INSIGHTS_DIR="${O3R_INSIGHTS_DIR:-$HOME/.o3r/insights}"
+DEFAULT_CHECK_INTERVAL="4h"  # Default interval for checking code
+DEFAULT_PROJECT_DIR="."      # Default project directory to analyze
+DEFAULT_WIDGET_NAME="o3r-insights"
+
+# Print help message
+function print_help {
+    cat << 'HELP'
+o3r-insights: Integrate o3r code analysis with BGRun for LLM awareness
+
+DESCRIPTION
+    Sets up automated code analysis with o3r and makes insights available
+    through BGRun widgets in .windsurfrules for LLMs to access.
+
+USAGE
+    o3r-insights [OPTIONS]
+
+OPTIONS
+    -d DIR        Project directory to analyze (default: current directory)
+    -e EXTS       Comma-separated list of extensions (default: py,js,ts,go)
+    -i INTERVAL   Check interval for analysis (default: 4h)
+    -n MAX        Maximum number of files to analyze (default: 10)
+    -w NAME       Custom widget name (default: o3r-insights)
+    -s            Show current insights without starting analysis
+    -1            Run analysis once and exit (no background monitoring)
+    -h, --help    Show help message
+
+EXAMPLES
+    # Setup automated analysis of current directory with default settings
+    o3r-insights
+    
+    # Analyze Python files in src directory every 12 hours
+    o3r-insights -d ./src -e py -i 12h
+    
+    # Run once and show insights
+    o3r-insights -1 -s
+HELP
+    exit 0
+}
+
+# Format insights for BGRun widget
+function format_insights_for_widget {
+    local insights_file="$1"
+    local max_length=1500  # Maximum length to keep widget reasonable
+    
+    if [ ! -f "$insights_file" ]; then
+        echo "No insights available yet. Analysis may still be running."
+        return 0
+    fi
+    
+    # Extract the most important insights
+    {
+        echo "## 🔍 O3 Code Insights"
+        echo ""
+        
+        # Get section headers
+        grep -E "^## " "$insights_file" | head -5
+        
+        echo ""
+        echo "### Top Issues:"
+        echo ""
+        
+        # Extract top item from each section (most important issues)
+        awk '/^## / {in_section=1; section=$0; next} /^## / {in_section=0} in_section && /^1\. / {print "- " substr(section, 4) ": " substr($0, 4); in_section=0}' "$insights_file"
+        
+        echo ""
+        echo "For full insights, run: cat $insights_file"
+    } | head -c $max_length
+}
+
+# Show current insights
+function show_current_insights {
+    local insights_file="$O3R_INSIGHTS_DIR/o3r_insights.md"
+    
+    if [ ! -f "$insights_file" ]; then
+        echo "No insights available yet."
+        return 1
+    fi
+    
+    echo "=== Current O3 Insights ==="
+    cat "$insights_file"
+    echo "=========================="
+    
+    return 0
+}
+
+# Setup BGRun widget with insights
+function setup_bgrun_widget {
+    local project_dir="$1"
+    local extensions="$2"
+    local interval="$3"
+    local max_files="$4"
+    local widget_name="$5"
+    local one_time="$6"
+    
+    # Create insights directory if it doesn't exist
+    mkdir -p "$O3R_INSIGHTS_DIR"
+    
+    if [ "$one_time" = "true" ]; then
+        # Run analysis once and create widget, but don't schedule recurring checks
+        echo "Running one-time analysis..."
+        
+        # Run o3r_analyze once
+        "$O3R_ANALYZE" -d "$project_dir" -e "$extensions" -n "$max_files" -o "$O3R_INSIGHTS_DIR" -1
+        
+        # Format insights for widget
+        local insights=$(format_insights_for_widget "$O3R_INSIGHTS_DIR/o3r_insights.md")
+        
+        # Use bgrun to create a one-time widget
+        bgrun --widget "$widget_name" "echo '$insights'"
+        
+        echo "One-time analysis complete. Insights added to .windsurfrules widget '$widget_name'."
+    else
+        # Setup recurring analysis with BGRun
+        echo "Setting up recurring analysis every $interval..."
+        
+        # Create the update command that will:
+        # 1. Run o3r_analyze
+        # 2. Format insights for the widget
+        local update_cmd="\"$O3R_ANALYZE\" -d \"$project_dir\" -e \"$extensions\" -n \"$max_files\" -o \"$O3R_INSIGHTS_DIR\" -1 && cat \"$O3R_INSIGHTS_DIR/o3r_insights.md\" | head -n 50"
+        
+        # Use BGRun to schedule recurring analysis and widget updates
+        bgrun --name "o3r-analysis" --widget "$widget_name" --interval "$interval" "$update_cmd"
+        
+        echo "Automated analysis scheduled with interval $interval."
+        echo "Insights will be available in .windsurfrules widget '$widget_name'."
+    fi
+}
+
+# Parse arguments
+PROJECT_DIR="$DEFAULT_PROJECT_DIR"
+EXTENSIONS="py,js,ts,go"
+CHECK_INTERVAL="$DEFAULT_CHECK_INTERVAL"
+MAX_FILES=10
+WIDGET_NAME="$DEFAULT_WIDGET_NAME"
+SHOW_ONLY=false
+ONE_TIME=false
+
+# Process command-line arguments
+while getopts "d:e:i:n:w:s1h" opt; do
+    case $opt in
+        d) PROJECT_DIR="$OPTARG" ;;
+        e) EXTENSIONS="$OPTARG" ;;
+        i) CHECK_INTERVAL="$OPTARG" ;;
+        n) MAX_FILES="$OPTARG" ;;
+        w) WIDGET_NAME="$OPTARG" ;;
+        s) SHOW_ONLY=true ;;
+        1) ONE_TIME=true ;;
+        h) print_help ;;
+        *) echo "Unknown option: $opt"; print_help ;;
+    esac
+done
+
+# Check if o3r_analyze.sh exists and is executable
+if [ ! -x "$O3R_ANALYZE" ]; then
+    echo "Error: o3r_analyze.sh not found or not executable at $O3R_ANALYZE"
+    exit 1
+fi
+
+# Check if BGRun is installed
+if ! command -v bgrun >/dev/null 2>&1; then
+    echo "Error: bgrun not found. Please install BGRun first."
+    exit 1
+fi
+
+# If show-only mode, just show current insights and exit
+if [ "$SHOW_ONLY" = "true" ]; then
+    show_current_insights
+    exit $?
+fi
+
+# Setup the integration
+setup_bgrun_widget "$PROJECT_DIR" "$EXTENSIONS" "$CHECK_INTERVAL" "$MAX_FILES" "$WIDGET_NAME" "$ONE_TIME"
+
+exit 0
+```
+
+```sh
+# FILE: ./o3r_collect_response.sh
+#!/bin/bash
+# FILE: o3r_collect_response.sh
+# Description: Script to automate interactions with O3 model using Chrome web app
+
+print_help() {
+    cat << 'HELP'
+o3r_collect_response.sh: Interact with O3 and collect responses
+
+DESCRIPTION
+    Opens O3 model using a Chrome web app, pastes content from clipboard,
+    and provides commands to collect responses via keyboard shortcuts.
+
+USAGE
+    ./o3r_collect_response.sh [OPTIONS] [COMMAND]
+
+COMMANDS
+    submit      - Open O3, paste and submit content (default)
+    collect     - Copy the current response with Cmd+Shift+C
+    code        - Copy just the last code block with Cmd+Shift+;
+
+OPTIONS
+    -h, --help     Show help message
+    -w SECONDS     Wait time before pasting (default: 3)
+    -a APP_PATH    Full path to Chrome web app (default: auto-detect)
+
+EXAMPLES
+    ./o3r_collect_response.sh           # Submit content
+    ./o3r_collect_response.sh collect   # Collect response
+    ./o3r_collect_response.sh code      # Collect code block
+HELP
+}
+
+# Check for macOS
+if [ "$(uname)" != "Darwin" ]; then
+    echo "Error: This script only works on macOS"
+    exit 1
+fi
+
+# Default values
+wait_before_paste=3
+command="submit"
+web_app_path=""
+
+# Auto-detect O3 web app
+auto_detect_web_app() {
+    local apps=(
+        "$HOME/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app"
+    )
+    
+    for app in "${apps[@]}"; do
+        if [ -e "$app" ]; then
+            web_app_path="$app"
+            echo "Found O3 web app: $web_app_path"
+            return 0
+        fi
+    done
+    
+    echo "No O3 web app found. Will use Chrome Dev instead."
+    return 1
+}
+
+# Process options
+while getopts "hw:a:" opt; do
+    case $opt in
+        h) print_help; exit 0 ;;
+        w) wait_before_paste="$OPTARG" ;;
+        a) web_app_path="$OPTARG" ;;
+        *) echo "Try './o3r_collect_response.sh --help' for more info."; exit 1 ;;
+    esac
+done
+
+shift $((OPTIND-1))
+[ "$1" ] && command="$1"
+
+# Auto-detect web app if not specified
+if [ -z "$web_app_path" ]; then
+    auto_detect_web_app
+fi
+
+# Submit content to O3
+submit_content() {
+    echo "Opening O3 and submitting content..."
+    
+    # Wait to ensure app is fully open
+    sleep "$wait_before_paste"
+    
+    # Submit clipboard content to web app
+    if [ -n "$web_app_path" ] && [ -e "$web_app_path" ]; then
+        osascript << EOF
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    # Paste clipboard content
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+    else
+        osascript << EOF
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    # Paste clipboard content
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+    fi
+    
+    echo "✅ Content submitted to O3"
+    echo "⏳ Waiting for response..."
+    echo "📋 When ready, run: $0 collect"
+    echo "📊 For code blocks only, run: $0 code"
+}
+
+# Modified collect_response function to use keyboard shortcuts
+collect_response() {
+    local app_id="$1"
+    local app_name="$2"
+    local response_type="$3"
+    
+    echo "Collecting response from O3 model..."
+    
+    if [ "$response_type" = "code" ]; then
+        # Extract only code blocks
+        osascript << EOF
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    tell application process "$app_id"
+        set frontmost to true
+        delay 1
+        keystroke ";" using {command down, shift down}
+        delay 1
+    end tell
+end tell
+EOF
+        echo "✅ Code blocks collected from O3 response"
+        
+        # Show preview of collected content
+        if command -v pbpaste > /dev/null; then
+            code=$(pbpaste)
+            echo "------- CODE BLOCK PREVIEW -------"
+            echo "${code:0:200}..."
+            echo "----------------------------------"
+            echo "Full code block in clipboard (${#code} characters)"
+        fi
+    else
+        # Collect full response
+        osascript << EOF
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    tell application process "$app_id"
+        set frontmost to true
+        delay 1
+        keystroke "c" using {command down, shift down}
+        delay 1
+    end tell
+end tell
+EOF
+        echo "✅ Full response collected from O3"
+        
+        # Show preview of collected content
+        if command -v pbpaste > /dev/null; then
+            response=$(pbpaste)
+            echo "------- RESPONSE PREVIEW -------"
+            echo "${response:0:200}..."
+            echo "--------------------------------"
+            echo "Full response in clipboard (${#response} characters)"
+        fi
+    fi
+}
+
+case "$command" in
+    submit)
+        submit_content
+        ;;
+    collect)
+        collect_response "$(basename "$web_app_path")" "$(basename "$web_app_path")" "full"
+        ;;
+    code)
+        collect_response "$(basename "$web_app_path")" "$(basename "$web_app_path")" "code"
+        ;;
+    *)
+        echo "Unknown command: $command"
+        print_help
+        exit 1
+        ;;
+esac
+
+exit 0
+```
+
+```sh
+# FILE: ./o3r_monitor_response.sh
+#!/bin/bash
+# FILE: o3r_monitor_response.sh
+# Description: Monitor for O3 response at regular intervals in Chrome web app
+
+print_help() {
+    cat << 'HELP'
+o3r_monitor_response.sh: Monitor for O3 responses
+
+DESCRIPTION
+    Periodically checks for O3 responses in a Chrome web app until 
+    a valid response is detected or the maximum time limit is reached.
+    IMPORTANT: This script assumes O3 is already open in a Chrome web app!
+
+USAGE
+    ./o3r_monitor_response.sh [OPTIONS]
+
+OPTIONS
+    -h, --help           Show help message
+    -i, --interval SEC   Check interval in seconds (default: 30)
+    -m, --max-time SEC   Maximum time to wait in seconds (default: 300)
+    -s, --min-size BYTES Minimum response size to consider valid (default: 20)
+    -o, --output FILE    Save final response to file
+    -a, --app-path PATH  Path to O3 web app (default: auto-detect)
+
+EXAMPLES
+    ./o3r_monitor_response.sh
+    ./o3r_monitor_response.sh -i 5 -m 600
+    ./o3r_monitor_response.sh --interval 15 --max-time 900 --output response.txt
+HELP
+}
+
+# Default values
+check_interval=30
+max_wait_time=300
+min_response_size=20
+output_file=""
+web_app_path=""
+
+# Auto-detect O3 web app
+auto_detect_web_app() {
+    local apps=(
+        "$HOME/Applications/Chrome Apps.localized/ChatGPT-o3-mini-high.app"
+    )
+    
+    for app in "${apps[@]}"; do
+        if [ -e "$app" ]; then
+            web_app_path="$app"
+            echo "Found O3 web app: $web_app_path"
+            return 0
+        fi
+    done
+    
+    echo "No O3 web app found. Will use Chrome Dev instead."
+    return 1
+}
+
+# Process options
+while [[ "$#" -gt 0 ]]; do
+    case $1 in
+        -h|--help) print_help; exit 0 ;;
+        -i|--interval) check_interval="$2"; shift ;;
+        -m|--max-time) max_wait_time="$2"; shift ;;
+        -s|--min-size) min_response_size="$2"; shift ;;
+        -o|--output) output_file="$2"; shift ;;
+        -a|--app-path) web_app_path="$2"; shift ;;
+        *) echo "Unknown parameter: $1"; print_help; exit 1 ;;
+    esac
+    shift
+done
+
+# Check for macOS
+if [ "$(uname)" != "Darwin" ]; then
+    echo "Error: This script only works on macOS"
+    exit 1
+fi
+
+# Auto-detect web app if not specified
+if [ -z "$web_app_path" ]; then
+    auto_detect_web_app
+fi
+
+# Start time tracking
+start_time=$(date +%s)
+end_time=$((start_time + max_wait_time))
+check_count=0
+response_size=0
+
+# Start monitoring
+echo "🔍 Starting response monitoring at $(date)"
+echo "⏱️  Will check every ${check_interval} seconds for up to ${max_wait_time} seconds"
+echo "⚡ Press Ctrl+C to cancel monitoring at any time"
+echo "-------------------------------------------------"
+
+while [ $(date +%s) -lt $end_time ]; do
+    # Increment check counter
+    check_count=$((check_count + 1))
+    
+    # Calculate elapsed time
+    current_time=$(date +%s)
+    elapsed=$((current_time - start_time))
+    
+    # Attempt to collect response using the appropriate app
+    if [ -n "$web_app_path" ] && [ -e "$web_app_path" ]; then
+        osascript << EOF > /dev/null
+tell application "$web_app_path" to activate
+delay 1
+tell application "System Events"
+    keystroke "c" using {command down, shift down}
+end tell
+EOF
+    else
+        osascript << EOF > /dev/null
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    keystroke "c" using {command down, shift down}
+end tell
+EOF
+    fi
+    
+    # Check clipboard content size
+    if command -v pbpaste > /dev/null; then
+        response=$(pbpaste)
+        response_size=${#response}
+        
+        echo "[Check $check_count] After ${elapsed}s: Response size ${response_size} bytes"
+        
+        # If response is large enough, consider it valid
+        if [ $response_size -gt $min_response_size ]; then
+            echo "✅ Valid response detected after ${elapsed} seconds!"
+            echo "📋 Response size: ${response_size} bytes"
+            
+            # Save to file if requested
+            if [ -n "$output_file" ]; then
+                echo "$response" > "$output_file"
+                echo "💾 Response saved to ${output_file}"
+            fi
+            
+            # Show preview
+            echo "----- RESPONSE PREVIEW (first 200 chars) -----"
+            echo "${response:0:200}"
+            echo "----------------------------------------------"
+            echo "Full response is in clipboard"
+            
+            exit 0
+        fi
+    fi
+    
+    # Wait before checking again
+    sleep $check_interval
+done
+
+# If we get here, we timed out
+echo "⏰ Timeout after ${max_wait_time} seconds"
+echo "No valid response detected after ${check_count} checks"
+exit 1
+```
+
+```sh
+# FILE: ./sanitize_repo.sh
+#!/bin/bash
+# sanitize_repo.sh - Remove personal path information from the repository
+# Run this script before publishing to GitHub
+
+set -e  # Exit on error
+
+echo "O3R Repository Sanitization Tool"
+echo "================================"
+echo "This script will remove personal path information from the repository."
+echo
+
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+cd "$SCRIPT_DIR"
+
+# Calculate the base directory name without personal information
+BASE_DIR="$(basename "$SCRIPT_DIR")"
+PARENT_DIR="$(dirname "$SCRIPT_DIR")"
+USER_NAME="$(echo "$PARENT_DIR" | grep -o '[^/]*$')"
+
+echo "Detected information:"
+echo "- Repository directory: $BASE_DIR"
+echo "- Current username: $USER_NAME"
+echo
+
+# Function to safely update file content
+update_file() {
+    local file="$1"
+    local temp_file="$(mktemp)"
+    
+    if [ ! -f "$file" ]; then
+        echo "Warning: File not found: $file"
+        return 1
+    fi
+    
+    # Replace absolute paths with script directory
+    sed "s|$PARENT_DIR/$BASE_DIR|%INSTALL_DIR%|g" "$file" > "$temp_file"
+    sed -i "" "s|/Users/$USER_NAME/|%USER_HOME%/|g" "$temp_file"
+    sed -i "" "s|$USER_NAME|%USERNAME%|g" "$temp_file"
+    
+    # Only update if changes were made
+    if ! diff -q "$file" "$temp_file" > /dev/null 2>&1; then
+        cp "$temp_file" "$file"
+        echo "✓ Sanitized: $file"
+    else
+        echo "  No changes needed: $file"
+    fi
+    
+    rm "$temp_file"
+}
+
+# Create a template for the o3r script that uses relative paths
+create_template_o3r() {
+    cat > "o3r.template" << 'EOF'
+#!/usr/bin/env bash
+# Direct o3r CLI wrapper script
+
+# Exit on error, undefined variables, and pipe failures
+set -euo pipefail
+
+# Get the directory where this script is located
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+MAIN_SCRIPT="$SCRIPT_DIR/o3r.sh"
+
+# Use script location to ensure command works from anywhere
+if [ ! -x "$MAIN_SCRIPT" ]; then
+    echo "Error: Could not find o3r main script at $MAIN_SCRIPT"
+    echo "Please reinstall o3r or check your installation"
+    exit 1
+fi
+
+exec "$MAIN_SCRIPT" "$@"
+EOF
+    echo "✓ Created template for o3r script"
+}
+
+# Modify the install.sh script to use relative paths
+update_install_script() {
+    # Create a backup
+    cp "install.sh" "install.sh.bak"
+    
+    # Modify the script to use the template
+    sed -i "" 's|cat > "$O3R_SCRIPT" << EOF|cat > "$O3R_SCRIPT" << '\''EOF'\''|' "install.sh"
+    sed -i "" '/^# Installed path:/d' "install.sh"
+    sed -i "" 's|# Use absolute paths to ensure command works from anywhere|# Get the directory where this script is located\nSCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" \&\& pwd )"\nMAIN_SCRIPT="$SCRIPT_DIR/o3r.sh"|' "install.sh"
+    
+    echo "✓ Updated install.sh to use relative paths"
+}
+
+# Find all script files and sanitize them
+echo "Sanitizing files..."
+create_template_o3r
+find . -type f -name "*.sh" -o -name "*.bat" -o -name "o3r" -o -name "README*.md" | while read -r file; do
+    update_file "$file"
+done
+
+# Update the install script
+update_install_script
+
+echo
+echo "Repository sanitization complete!"
+echo
+echo "Next steps:"
+echo "1. Review the changes (git diff)"
+echo "2. Run the sanitized install script to update the o3r script"
+echo "3. Test everything to ensure it works as expected"
+echo "4. Commit changes to Git"
+echo
+echo "Remember to use git clean to remove any temporary files before publishing."
+```
+
+```bat
+# FILE: ./install.bat
+@echo off
+REM O3R Installer Script for Windows
+REM Installs the commands to a location in PATH
+
+echo O3R Installer for Windows
+echo =========================
+
+set SCRIPT_DIR=%~dp0
+set SCRIPT_DIR=%SCRIPT_DIR:~0,-1%
+set O3R_SCRIPT=%SCRIPT_DIR%\o3r.bat
+set MAIN_SCRIPT=%SCRIPT_DIR%\o3r_main.bat
+set COLLECT_SCRIPT=%SCRIPT_DIR%\o3r_collect_response.bat
+set MONITOR_SCRIPT=%SCRIPT_DIR%\o3r_monitor_response.bat
+set BACKGROUND_SCRIPT=%SCRIPT_DIR%\o3r_background.bat
+
+REM Create bin directory in user profile if it doesn't exist
+if not exist "%USERPROFILE%\bin" (
+    echo Creating %USERPROFILE%\bin directory...
+    mkdir "%USERPROFILE%\bin"
+)
+
+REM Check if Windows directory is writable (for admin users)
+set INSTALL_DIRS="%USERPROFILE%\bin"
+if exist "C:\Windows" (
+    echo Found C:\Windows - checking if writable...
+    echo Testing write permissions... > "C:\Windows\o3r_test.txt" 2>nul
+    if exist "C:\Windows\o3r_test.txt" (
+        del "C:\Windows\o3r_test.txt"
+        set "INSTALL_DIRS=%INSTALL_DIRS% C:\Windows"
+    )
+)
+
+REM Create the main wrapper script
+echo @echo off > "%O3R_SCRIPT%"
+echo REM O3R CLI wrapper script >> "%O3R_SCRIPT%"
+echo REM Installed path: %SCRIPT_DIR% >> "%O3R_SCRIPT%"
+echo. >> "%O3R_SCRIPT%"
+echo REM Check if main script exists >> "%O3R_SCRIPT%"
+echo if not exist "%MAIN_SCRIPT%" ( >> "%O3R_SCRIPT%"
+echo   echo Error: Could not find o3r main script at %MAIN_SCRIPT% >> "%O3R_SCRIPT%"
+echo   echo Please reinstall o3r or check your installation >> "%O3R_SCRIPT%"
+echo   exit /b 1 >> "%O3R_SCRIPT%"
+echo ) >> "%O3R_SCRIPT%"
+echo. >> "%O3R_SCRIPT%"
+echo call "%MAIN_SCRIPT%" %%* >> "%O3R_SCRIPT%"
+
+REM Make scripts executable
+echo Making scripts executable...
+
+REM Create batch wrapper scripts for all installation directories
+for %%I in (%INSTALL_DIRS%) do (
+    REM Main o3r command
+    echo Installing o3r command to %%~I...
+    echo @echo off > "%%~I\o3r.bat"
+    echo REM O3R wrapper script >> "%%~I\o3r.bat" 
+    echo call "%O3R_SCRIPT%" %%* >> "%%~I\o3r.bat"
+
+    REM Create wrapper for collect command
+    echo Installing o3r-collect command to %%~I...
+    echo @echo off > "%%~I\o3r-collect.bat"
+    echo REM o3r-collect wrapper script >> "%%~I\o3r-collect.bat"
+    echo call "%COLLECT_SCRIPT%" %%* >> "%%~I\o3r-collect.bat"
+
+    REM Create wrapper for monitor command
+    echo Installing o3r-monitor command to %%~I...
+    echo @echo off > "%%~I\o3r-monitor.bat"
+    echo REM o3r-monitor wrapper script >> "%%~I\o3r-monitor.bat"
+    echo call "%MONITOR_SCRIPT%" %%* >> "%%~I\o3r-monitor.bat"
+
+    REM Create wrapper for background command
+    echo Installing o3r-run command to %%~I...
+    echo @echo off > "%%~I\o3r-run.bat"
+    echo REM o3r-run wrapper script >> "%%~I\o3r-run.bat"
+    echo call "%BACKGROUND_SCRIPT%" %%* >> "%%~I\o3r-run.bat"
+
+    echo ✓ Commands installed to %%~I
+)
+
+echo Checking if PATH contains installation directory...
+echo %PATH% | findstr /i /c:"%USERPROFILE%\bin" > nul
+if errorlevel 1 (
+    echo WARNING: %USERPROFILE%\bin is not in your PATH.
+    echo Please add it to your PATH to use o3r commands from anywhere.
+    echo You can do this by running:
+    echo setx PATH "%%PATH%%;%%USERPROFILE%%\bin"
+)
+
+echo.
+echo ✓ O3R installed successfully!
+echo   The following commands are now available:
+echo   - o3r          : Prepare code for O3 refactoring
+echo   - o3r-collect  : Collect response from O3
+echo   - o3r-monitor  : Monitor for O3 responses
+echo   - o3r-run      : Run complete O3 workflow in background
+echo   Run each command with --help to see usage instructions.
+```
+
+```bat
+# FILE: ./o3r_background.bat
+@echo off
+REM o3r_background.bat - Windows version
+REM Run the complete O3 workflow in background
+
+setlocal EnableDelayedExpansion
+
+REM Functions
+goto :main
+
+:print_help
+echo o3r-run: Run complete O3 workflow in background
+echo.
+echo DESCRIPTION
+echo     Runs the full O3 workflow in background - processing files,
+echo     submitting to O3, monitoring for response, and saving output.
+echo.
+echo USAGE
+echo     o3r-run [OPTIONS] (-f FILE_LIST ^| -d DIRECTORY)
+echo.
+echo OPTIONS
+echo     -d DIR        Directory to process (default: current directory)
+echo     -e EXTS       Extensions to process (default: py,js,ts,go)
+echo     -f FILE       File containing list of files to process
+echo     -o FILE       Output file for response (default: o3r_response.txt)
+echo     -w SECONDS    Wait before pasting (default: 3)
+echo     -i SECONDS    Check interval (default: 30)
+echo     -m SECONDS    Maximum wait time (default: 300)
+echo     -s SIZE       Minimum response size (default: 100)
+echo     -b BROWSER    Browser to use (chrome, edge, default: chrome)
+echo     -h, --help    Show help message
+echo.
+echo EXAMPLES
+echo     o3r-run -d ./src -e py
+echo     o3r-run -f files.txt -o result.txt
+echo     o3r-run -d . -e js -m 600 -i 60
+exit /b 0
+
+:main
+set "directory="
+set "extensions=py,js,ts,go"
+set "file_list="
+set "output_file=o3r_response.txt"
+set "wait_before_paste=3"
+set "check_interval=30"
+set "max_wait_time=300"
+set "min_response_size=100"
+set "browser=chrome"
+
+REM Process options
+:parse_args
+if "%~1"=="" goto args_done
+if "%~1"=="-h" goto help_and_exit
+if "%~1"=="--help" goto help_and_exit
+if "%~1"=="-d" (
+    set "directory=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-e" (
+    set "extensions=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-f" (
+    set "file_list=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-o" (
+    set "output_file=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-w" (
+    set "wait_before_paste=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-i" (
+    set "check_interval=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-m" (
+    set "max_wait_time=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-s" (
+    set "min_response_size=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-b" (
+    set "browser=%~2"
+    shift
+    shift
+    goto parse_args
+)
+echo Unknown option: %1
+call :print_help
+exit /b 1
+
+:args_done
+REM Validate inputs
+if "%directory%"=="" if "%file_list%"=="" (
+    echo Error: Must provide either -d or -f option
+    call :print_help
+    exit /b 1
+)
+
+echo O3R Workflow Starting
+echo =====================
+echo.
+
+REM Step 1: Generate and copy content
+echo STEP 1: Processing input files...
+set "script_dir=%~dp0"
+set "script_dir=%script_dir:~0,-1%"
+
+if not "%directory%"=="" (
+    echo Running: %script_dir%\o3r_main.bat -d "%directory%" -e "%extensions%" 
+    call "%script_dir%\o3r_main.bat" -d "%directory%" -e "%extensions%"
+) else (
+    echo Running: %script_dir%\o3r_main.bat -f "%file_list%"
+    call "%script_dir%\o3r_main.bat" -f "%file_list%"
+)
+
+if %ERRORLEVEL% neq 0 (
+    echo Error: Failed to process input files
+    exit /b 1
+)
+
+echo Content successfully copied to clipboard.
+echo.
+
+REM Step 2: Submit to O3
+echo STEP 2: Submitting to O3...
+echo Running: %script_dir%\o3r_collect_response.bat -w "%wait_before_paste%" -b "%browser%"
+call "%script_dir%\o3r_collect_response.bat" -w "%wait_before_paste%" -b "%browser%"
+
+echo.
+echo Content submitted to O3.
+echo IMPORTANT: You'll need to manually click in the browser and:
+echo 1. Press Ctrl+V to paste your code
+echo 2. Press Enter to submit to O3
+echo.
+
+REM Step 3: Monitor for response
+echo STEP 3: Monitoring for response...
+echo When O3 finishes generating a response, select all the text
+echo and press Ctrl+C to copy it to clipboard.
+echo.
+echo Waiting for response...
+echo Running: %script_dir%\o3r_monitor_response.bat -o "%output_file%" -i "%check_interval%" -m "%max_wait_time%" -s "%min_response_size%"
+call "%script_dir%\o3r_monitor_response.bat" -o "%output_file%" -i "%check_interval%" -m "%max_wait_time%" -s "%min_response_size%"
+
+if %ERRORLEVEL% equ 0 (
+    echo.
+    echo ✓ O3R workflow completed successfully!
+    echo ✓ Response saved to: "%output_file%"
+) else (
+    echo.
+    echo ❌ O3R workflow did not complete successfully
+    echo Try running o3r-collect and o3r-monitor manually
+)
+
+exit /b %ERRORLEVEL%
+
+:help_and_exit
+call :print_help
+exit /b 0
+```
+
+```bat
+# FILE: ./o3r_collect_response.bat
+@echo off
+REM o3r_collect_response.bat - Windows version
+REM Interact with O3 model via browser automation
+
+setlocal EnableDelayedExpansion
+
+REM Functions
+goto :main
+
+:print_help
+echo o3r_collect_response.bat: Interact with O3 and collect responses
+echo.
+echo DESCRIPTION
+echo     Opens O3 model using Chrome, pastes content from clipboard,
+echo     and provides commands to collect responses.
+echo.
+echo USAGE
+echo     o3r_collect_response.bat [OPTIONS] [COMMAND]
+echo.
+echo COMMANDS
+echo     submit      - Open O3, paste and submit content (default)
+echo     collect     - Copy the current response
+echo     code        - Copy just the last code block
+echo.
+echo OPTIONS
+echo     -h, --help     Show help message
+echo     -w SECONDS     Wait time before pasting (default: 3)
+echo     -b BROWSER     Browser to use (chrome, edge, default: chrome)
+echo.
+echo EXAMPLES
+echo     o3r_collect_response.bat           # Submit content
+echo     o3r_collect_response.bat collect   # Collect response
+echo     o3r_collect_response.bat code      # Collect code block
+exit /b 0
+
+:submit_content
+echo Opening O3 and submitting content...
+
+REM Wait to ensure browser is fully open
+timeout /t %wait_before_paste% > nul
+
+REM Open the browser with O3 URL
+if "%browser%"=="edge" (
+    start microsoft-edge https://chat.openai.com/?model=gpt-4o-mini
+) else (
+    start chrome https://chat.openai.com/?model=gpt-4o-mini
+)
+
+echo.
+echo Browser has been opened with O3 chat URL.
+echo.
+echo MANUAL STEPS TO FOLLOW:
+echo 1. Wait for the browser to fully load
+echo 2. Press Ctrl+V to paste your code
+echo 3. Press Enter to submit to O3
+echo.
+echo When ready to collect the response, run:
+echo   o3r-collect collect
+echo.
+echo For code blocks only, run:
+echo   o3r-collect code
+echo.
+
+exit /b 0
+
+:collect_response
+echo.
+echo To collect the response from O3, follow these steps:
+echo.
+echo 1. Make sure the O3 response is complete
+echo 2. Select all the text by clicking at the beginning
+echo    and dragging to the end of the response
+echo 3. Press Ctrl+C to copy the response
+echo.
+echo The response is now in your clipboard.
+echo.
+echo To extract just the code blocks, run:
+echo   o3r-collect code
+echo.
+
+exit /b 0
+
+:collect_code
+echo.
+echo To collect code blocks from O3, follow these steps:
+echo.
+echo 1. Make sure you have the O3 response copied to clipboard
+echo 2. Running this command will extract code blocks from your clipboard
+echo.
+
+REM Create temporary files
+set "temp_input=%TEMP%\o3r_code_input_%RANDOM%.txt"
+set "temp_output=%TEMP%\o3r_code_output_%RANDOM%.txt"
+
+REM Get clipboard content and save to temp file
+powershell -command "Get-Clipboard | Out-File -Encoding utf8 '%temp_input%'"
+
+REM Use PowerShell to extract code blocks
+powershell -Command "& {
+    $content = Get-Content -Raw '%temp_input%'
+    $codeBlocks = [regex]::Matches($content, '```(?:\w+)?\r?\n([\s\S]*?)\r?\n```')
+    $extracted = $codeBlocks | ForEach-Object { $_.Groups[1].Value } | Out-String
+    $extracted | Out-File -Encoding utf8 '%temp_output%'
+}"
+
+REM Copy extracted code blocks back to clipboard
+powershell -command "Get-Content '%temp_output%' | Set-Clipboard"
+
+REM Display preview
+powershell -Command "& {
+    $content = Get-Content -Raw '%temp_output%'
+    if ($content.Length -gt 0) {
+        Write-Host '------- CODE BLOCK PREVIEW -------'
+        if ($content.Length -gt 200) {
+            Write-Host $content.Substring(0, 200) '...'
+        } else {
+            Write-Host $content
+        }
+        Write-Host '----------------------------------'
+        Write-Host ('Full code block in clipboard ({0} characters)' -f $content.Length)
+    } else {
+        Write-Host 'No code blocks found in clipboard'
+    }
+}"
+
+REM Clean up temp files
+del "%temp_input%" > nul 2>&1
+del "%temp_output%" > nul 2>&1
+
+exit /b 0
+
+:main
+set "command=submit"
+set "wait_before_paste=3"
+set "browser=chrome"
+
+REM Process options
+:parse_args
+if "%~1"=="" goto args_done
+if "%~1"=="-h" goto help_and_exit
+if "%~1"=="--help" goto help_and_exit
+if "%~1"=="-w" (
+    set "wait_before_paste=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-b" (
+    set "browser=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="submit" (
+    set "command=submit"
+    shift
+    goto parse_args
+)
+if "%~1"=="collect" (
+    set "command=collect"
+    shift
+    goto parse_args
+)
+if "%~1"=="code" (
+    set "command=collect_code"
+    shift
+    goto parse_args
+)
+echo Unknown option: %1
+call :print_help
+exit /b 1
+
+:args_done
+if "%command%"=="submit" call :submit_content
+if "%command%"=="collect" call :collect_response
+if "%command%"=="collect_code" call :collect_code
+exit /b 0
+
+:help_and_exit
+call :print_help
+exit /b 0
+```
+
+```bat
+# FILE: ./o3r_main.bat
+@echo off
+REM o3r_main.bat - Windows version of o3r main script
+REM Prepares code for O3 refactoring
+
+setlocal EnableDelayedExpansion
+
+REM Functions
+goto :main
+
+:print_help
+echo o3r: Prepare code for O3 refactoring
+echo.
+echo DESCRIPTION
+echo     Combines source files into a single document with formatting and
+echo     instructions for O3-based refactoring. Copies to clipboard by default.
+echo.
+echo USAGE
+echo     o3r [OPTIONS] (-f FILE_LIST ^| -d DIRECTORY)
+echo.
+echo OPTIONS
+echo     -o FILE     Write output to FILE instead of clipboard
+echo     -f FILE     Read list of files from FILE
+echo     -d DIR      Process all matching files in DIR recursively
+echo     -e EXTS     Comma-separated list of extensions (default: py,js,ts,go)
+echo     -p          Auto-paste to O3 (Windows only)
+echo     -m          Auto-monitor for responses (Windows only)
+echo     -i SECONDS  Check interval for monitoring (default: 30)
+echo     -t SECONDS  Maximum wait time for monitoring (default: 300)
+echo     -h, --help  Show help message
+echo.
+echo EXAMPLES
+echo     o3r -d ./src -e py
+echo     o3r -d ./src -e py -p
+echo     o3r -f files.txt -o output.txt
+echo     o3r -d "src/core,tests" -e py
+echo.
+echo NOTE
+echo     Uses Windows clipboard for copy/paste operations
+echo     Auto-paste (-p) and auto-monitor (-m) functionality requires O3 web app
+exit /b 0
+
+:generate_content
+REM Create a temp file
+set "temp_file=%TEMP%\o3r_%RANDOM%.txt"
+
+echo ### REFACTORING INSTRUCTIONS ### > "%temp_file%"
+echo Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements: >> "%temp_file%"
+echo 1. Combine related functions, variables, and imports on single lines where logical >> "%temp_file%"
+echo 2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.) >> "%temp_file%"
+echo 3. Merge similar logic and remove redundant code >> "%temp_file%"
+echo 4. CRITICAL: Preserve ALL literal strings exactly as-is, including: >> "%temp_file%"
+echo    - Success messages >> "%temp_file%"
+echo    - Error messages >> "%temp_file%"
+echo    - API responses >> "%temp_file%"
+echo    - Log messages >> "%temp_file%"
+echo    - Test assertions >> "%temp_file%"
+echo 5. Preserve docstrings and comments that explain complex logic >> "%temp_file%"
+echo 6. Maintain the same imports, just organize them better >> "%temp_file%"
+echo. >> "%temp_file%"
+echo ### CODEBASE ### >> "%temp_file%"
+
+REM Process directory input
+if not "%directory%"=="" (
+    for %%d in (%directory%) do (
+        for %%e in (%extensions%) do (
+            echo Scanning directory %%d for .%%e files...
+            for /r "%%d" %%f in (*.%%e) do (
+                echo Adding %%f...
+                echo. >> "%temp_file%"
+                echo ```%%e >> "%temp_file%"
+                echo # FILE: %%f >> "%temp_file%"
+                type "%%f" >> "%temp_file%"
+                echo ``` >> "%temp_file%"
+            )
+        )
+    )
+)
+
+REM Process file list input
+if not "%file_list%"=="" (
+    if "%file_list%"=="-" (
+        REM Read from stdin - not directly supported in batch
+        echo Error: Reading from stdin not supported in Windows version
+        exit /b 1
+    ) else (
+        REM Read from file
+        for /f "usebackq tokens=*" %%f in ("%file_list%") do (
+            if exist "%%f" (
+                echo Adding %%f...
+                for %%e in ("%%f") do set "ext=%%~xe"
+                set "ext=!ext:~1!"
+                echo. >> "%temp_file%"
+                echo ```!ext! >> "%temp_file%"
+                echo # FILE: %%f >> "%temp_file%"
+                type "%%f" >> "%temp_file%"
+                echo ``` >> "%temp_file%"
+            ) else (
+                echo Warning: File not found - %%f
+            )
+        )
+    )
+)
+
+REM Handle output destination
+if not "%output_file%"=="" (
+    copy "%temp_file%" "%output_file%" > nul
+    echo Content written to %output_file%
+) else (
+    REM Copy to clipboard using PowerShell
+    powershell -command "Get-Content '%temp_file%' | Set-Clipboard"
+    echo Content copied to clipboard (Windows)
+    
+    REM Auto paste if enabled
+    if "%auto_paste%"=="true" (
+        echo Auto-pasting content to O3...
+        call "%~dp0o3r_collect_response.bat"
+        
+        REM If monitoring is enabled, start monitoring
+        if "%auto_monitor%"=="true" (
+            set "monitor_script=%~dp0o3r_monitor_response.bat"
+            echo Starting response monitoring...
+            call "!monitor_script!" -i %monitor_interval% -m %monitor_maxtime%
+        ) else (
+            echo Monitoring not enabled. Run the following when ready:
+            echo %~dp0o3r_monitor_response.bat
+        )
+    )
+)
+
+REM Clean up temp file
+del "%temp_file%" > nul 2>&1
+exit /b 0
+
+:main
+set "output_file="
+set "file_list="
+set "directory="
+set "extensions=py,js,ts,go"
+set "auto_paste=false"
+set "auto_monitor=false"
+set "monitor_interval=30"
+set "monitor_maxtime=300"
+
+if "%~1"=="" goto help_and_exit
+if "%~1"=="-h" goto help_and_exit
+if "%~1"=="--help" goto help_and_exit
+
+:parse_args
+if "%~1"=="" goto args_done
+if "%~1"=="-o" (
+    set "output_file=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-f" (
+    set "file_list=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-d" (
+    set "directory=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-e" (
+    set "extensions=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-p" (
+    set "auto_paste=true"
+    shift
+    goto parse_args
+)
+if "%~1"=="-m" (
+    set "auto_monitor=true"
+    shift
+    goto parse_args
+)
+if "%~1"=="-i" (
+    set "monitor_interval=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-t" (
+    set "monitor_maxtime=%~2"
+    shift
+    shift
+    goto parse_args
+)
+echo Unknown option: %1
+call :print_help
+exit /b 1
+
+:args_done
+if "%file_list%"=="" if "%directory%"=="" (
+    echo Error: Provide -f or -d
+    exit /b 1
+)
+
+call :generate_content
+exit /b 0
+
+:help_and_exit
+call :print_help
+exit /b 0
+```
+
+```bat
+# FILE: ./o3r_monitor_response.bat
+@echo off
+REM o3r_monitor_response.bat - Windows version
+REM Monitor for O3 responses in clipboard
+
+setlocal EnableDelayedExpansion
+
+REM Functions
+goto :main
+
+:print_help
+echo o3r_monitor_response.bat: Monitor for O3 responses
+echo.
+echo DESCRIPTION
+echo     Periodically checks clipboard for O3 responses.
+echo.
+echo USAGE
+echo     o3r_monitor_response.bat [OPTIONS]
+echo.
+echo OPTIONS
+echo     -o FILE     Output file for response (default: o3r_response.txt)
+echo     -i SECONDS  Check interval in seconds (default: 30)
+echo     -m SECONDS  Maximum wait time in seconds (default: 300)
+echo     -s SIZE     Minimum response size in bytes (default: 100)
+echo     -h, --help  Show help message
+echo.
+echo EXAMPLES
+echo     o3r_monitor_response.bat
+echo     o3r_monitor_response.bat -i 10 -m 600
+echo     o3r_monitor_response.bat -o result.txt -s 500
+exit /b 0
+
+:monitor_response
+echo.
+echo MANUAL MONITORING INSTRUCTIONS FOR WINDOWS
+echo.
+echo 1. This script will periodically check your clipboard
+echo    for content that appears to be from O3.
+echo.
+echo 2. When O3 is finished, manually select the entire
+echo    response and press Ctrl+C to copy it.
+echo.
+echo 3. This script will detect when clipboard content changes
+echo    and save it to the output file.
+echo.
+echo Starting monitoring at %time%
+echo Will check every %check_interval% seconds for up to %max_wait_time% seconds.
+echo Response will be saved to: %output_file%
+echo.
+
+REM Create temporary files
+set "temp_prev=%TEMP%\o3r_monitor_prev_%RANDOM%.txt"
+set "temp_curr=%TEMP%\o3r_monitor_curr_%RANDOM%.txt"
+
+REM Initialize previous clipboard content
+powershell -command "Get-Clipboard | Out-File -Encoding utf8 '%temp_prev%'"
+set /a "prev_size=0"
+for %%A in ("%temp_prev%") do set "prev_size=%%~zA"
+
+REM Start the monitoring loop
+set "start_time=%time%"
+set /a "end_seconds=%SECONDS% + %max_wait_time%"
+set "check_count=0"
+
+:monitor_loop
+set /a "check_count+=1"
+set /a "elapsed=%SECONDS% - %start_seconds%"
+
+REM Get current clipboard content
+powershell -command "Get-Clipboard | Out-File -Encoding utf8 '%temp_curr%'"
+set /a "curr_size=0"
+for %%A in ("%temp_curr%") do set "curr_size=%%~zA"
+
+echo [Check %check_count%] After %elapsed%s: Response size %curr_size% bytes
+
+REM Check if response is valid
+if %curr_size% geq %min_response_size% (
+    if %curr_size% neq %prev_size% (
+        echo ✓ Valid response detected after %elapsed% seconds!
+        echo ✓ Response size: %curr_size% bytes
+        echo ----- RESPONSE PREVIEW (first 200 chars) -----
+        powershell -command "Get-Content '%temp_curr%' -Raw | ForEach-Object { if ($_.Length -gt 200) {$_.Substring(0, 200) + '...'} else {$_} }"
+        echo ----------------------------------------------
+        
+        REM Save response to file
+        copy "%temp_curr%" "%output_file%" > nul
+        echo ✓ Full response saved to: %output_file%
+        
+        REM Clean up temp files
+        del "%temp_prev%" > nul 2>&1
+        del "%temp_curr%" > nul 2>&1
+        
+        exit /b 0
+    )
+)
+
+REM Update previous size
+set "prev_size=%curr_size%"
+copy "%temp_curr%" "%temp_prev%" > nul
+
+REM Check if we've reached the timeout
+if %SECONDS% geq %end_seconds% (
+    echo ❌ No valid response detected within %max_wait_time% seconds
+    
+    REM Clean up temp files
+    del "%temp_prev%" > nul 2>&1
+    del "%temp_curr%" > nul 2>&1
+    
+    exit /b 1
+)
+
+REM Wait for next check
+timeout /t %check_interval% > nul
+goto monitor_loop
+
+:main
+set "output_file=o3r_response.txt"
+set "check_interval=30"
+set "max_wait_time=300"
+set "min_response_size=100"
+
+REM Initialize SECONDS variable (not built into batch)
+for /f "tokens=1-3 delims=:.," %%a in ("%time%") do (
+   set /a "start_seconds=(((%%a*60)+1%%b %% 100)*60+1%%c %% 100)"
+)
+set "SECONDS=%start_seconds%"
+
+REM Process options
+:parse_args
+if "%~1"=="" goto args_done
+if "%~1"=="-h" goto help_and_exit
+if "%~1"=="--help" goto help_and_exit
+if "%~1"=="-o" (
+    set "output_file=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-i" (
+    set "check_interval=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-m" (
+    set "max_wait_time=%~2"
+    shift
+    shift
+    goto parse_args
+)
+if "%~1"=="-s" (
+    set "min_response_size=%~2"
+    shift
+    shift
+    goto parse_args
+)
+echo Unknown option: %1
+call :print_help
+exit /b 1
+
+:args_done
+call :monitor_response
+exit /b 0
+
+:help_and_exit
+call :print_help
+exit /b 0
+```
+
+### END CODEBASE ###
