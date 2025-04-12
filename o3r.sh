@@ -120,6 +120,15 @@ EOL
     # Add the codebase header
     echo -e "### CODEBASE ###" >> "$temp_file"
     
+    # If show_prompt is true, display the prompt and exit
+    if [ "$show_prompt" = true ]; then
+        echo "=== PROMPT PREVIEW ==="
+        cat "$temp_file"
+        echo "=== END PROMPT PREVIEW ==="
+        rm "$temp_file"
+        exit 0
+    fi
+    
     # Record start time
     start_time=$(date +"%Y-%m-%d %H:%M:%S")
     
@@ -179,15 +188,6 @@ EOL
     echo "- Suggestions for better architecture" >> "$temp_file"
     echo "- Installation or testing instructions if applicable" >> "$temp_file"
 
-    # If show_prompt is true, display the prompt and exit
-    if [ "$show_prompt" = true ]; then
-        echo "=== PROMPT PREVIEW ==="
-        cat "$temp_file" | head -30  # Show just the instructions part
-        echo "=== END PROMPT PREVIEW ==="
-        rm "$temp_file"
-        exit 0
-    fi
-    
     # Add end marker
     echo -e "\n### END CODEBASE ###\n" >> "$temp_file"
     
