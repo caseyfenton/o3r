@@ -21,9 +21,9 @@ OPTIONS
     -m          Auto-monitor for responses (Mac only)
     -i SECONDS  Check interval for monitoring (default: 30)
     -t SECONDS  Maximum wait time for monitoring (default: 300)
-    -pa FILE    Add additional prompt instructions from FILE
-    -pr NUMS    Remove specified requirements by number (e.g., "1,3,5")
-    -sp         Show the prompt that would be used without running
+    -P FILE     Add additional prompt instructions from FILE
+    -R NUMS     Remove specified requirements by number (e.g., "1,3,5")
+    -s          Show the prompt that would be used without running
     -h, --help  Show help message
 
 EXAMPLES
@@ -31,8 +31,8 @@ EXAMPLES
     o3r -d ./src -e py -p
     o3r -f files.txt -o output.txt
     o3r -d "src/core,tests" -e py
-    o3r -pa custom_prompt.txt -d ./src
-    o3r -pr "2,5" -d ./src
+    o3r -P custom_prompt.txt -d ./src
+    o3r -R "2,5" -d ./src
 
 NOTE
     Requires 'pbcopy' (Mac) or 'xclip' (Linux) for clipboard
@@ -44,7 +44,7 @@ HELP
 
 output_file=""; file_list=""; directory=""; extensions="py,js,ts,go"; auto_paste=false; auto_monitor=false; monitor_interval=30; monitor_maxtime=300; prompt_add_file=""; prompt_remove_nums=""; show_prompt=false
 
-while getopts "o:f:d:e:pmi:t:pa:pr:sph" opt; do
+while getopts "o:f:d:e:pmi:t:P:R:sh" opt; do
     case $opt in
         o) output_file="$OPTARG" ;;
         f) file_list="$OPTARG" ;;
@@ -54,9 +54,9 @@ while getopts "o:f:d:e:pmi:t:pa:pr:sph" opt; do
         m) auto_monitor=true ;;
         i) monitor_interval="$OPTARG" ;;
         t) monitor_maxtime="$OPTARG" ;;
-        pa) prompt_add_file="$OPTARG" ;;
-        pr) prompt_remove_nums="$OPTARG" ;;
-        sp) show_prompt=true ;;
+        P) prompt_add_file="$OPTARG" ;;
+        R) prompt_remove_nums="$OPTARG" ;;
+        s) show_prompt=true ;;
         h) print_help; exit 0 ;;
         *) echo "Try 'o3r --help' for more info."; exit 1 ;;
     esac
