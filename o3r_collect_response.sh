@@ -109,7 +109,10 @@ end tell
 EOF
     fi
     
-    echo "✅ Content submitted to O3"
+    # Mark clipboard with "waiting for response" and timestamp
+    start_timestamp=$(date "+%Y-%m-%d %H:%M:%S")
+    echo "O3R_NOT_DONE_YET, started at ${start_timestamp}" | pbcopy
+    echo "✅ Content submitted and clipboard marked with timestamp ${start_timestamp}"
     echo "⏳ Waiting for response..."
     echo "📋 When ready, run: $0 collect"
     echo "📊 For code blocks only, run: $0 code"

@@ -1,0 +1,13 @@
+8. NAME TRANSITION: Replace all occurrences of "VoiceInk" with AppConfig.appName to support transition to "VibeRater" while maintaining flexibility for future changes.
+
+9. MAINTAIN API COMPATIBILITY: Ensure that all public interfaces, UserDefaults keys, and external APIs remain compatible with existing code that might reference them.
+
+10. CENTRALIZE SETTINGS: Use AppSettingsManager for all settings access - remove any direct UserDefaults references throughout the codebase.
+
+11. HANDLE PREFIX CHANGES: Ensure identifiers like file prefixes, logger subsystems, and bundle identifiers are updated consistently.
+
+12. SETTINGS SEPARATION: Maintain separation between VoiceInk and VibeRater settings, allowing both apps to coexist if needed.
+
+13. MIGRATION SUPPORT: Include appropriate migration logic for users upgrading from VoiceInk to VibeRater.
+
+14. UPDATE DOCUMENTATION: Ensure code comments, docstrings, and README files reflect the new app name.
