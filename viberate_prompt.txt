@@ -1,3 +1,5 @@
+0. CRITICAL: ALWAYS USE PROPER CODE FENCING! Every code snippet MUST be wrapped in triple backticks (```) with the appropriate language specified. Example: ```swift [code goes here] ``` - This is THE MOST IMPORTANT requirement as it ensures proper parsing and execution.
+
 8. NAME TRANSITION: Replace all occurrences of "VoiceInk" with AppConfig.appName to support transition to "VibeRater" while maintaining flexibility for future changes.
 
 9. MAINTAIN API COMPATIBILITY: Ensure that all public interfaces, UserDefaults keys, and external APIs remain compatible with existing code that might reference them.
