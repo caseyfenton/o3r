@@ -1,0 +1,259 @@
+Scanning directory ./o3r.sh for .sh files...
+Adding ./o3r.sh...
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+
+```sh
+# FILE: ./o3r.sh
+#!/bin/bash
+# FILE: ./o3r.sh
+# Description and help output
+print_help() {
+    cat << 'HELP'
+o3r: Prepare code for O3 refactoring
+
+DESCRIPTION
+    Combines source files into a single document with formatting and 
+    instructions for O3-based refactoring. Copies to clipboard by default.
+
+USAGE
+    o3r [OPTIONS] (-f FILE_LIST | -d DIRECTORY)
+
+OPTIONS
+    -o FILE     Write output to FILE instead of clipboard
+    -f FILE     Read list of files from FILE
+    -d DIR      Process all matching files in DIR recursively
+    -e EXTS     Comma-separated list of extensions (default: py,js,ts,go)
+    -p          Auto-paste to O3 (Mac only)
+    -m          Auto-monitor for responses (Mac only)
+    -i SECONDS  Check interval for monitoring (default: 30)
+    -t SECONDS  Maximum wait time for monitoring (default: 300)
+    -h, --help  Show help message
+
+EXAMPLES
+    o3r -d ./src -e py
+    o3r -d ./src -e py -p
+    o3r -f files.txt -o output.txt
+    o3r -d "src/core,tests" -e py
+
+NOTE
+    Requires 'pbcopy' (Mac) or 'xclip' (Linux) for clipboard
+    Auto-paste (-p) and auto-monitor (-m) only work on macOS with O3 web app
+HELP
+}
+
+[[ $# -eq 0 || "$1" =~ ^-h|--help$ ]] && print_help && exit 0
+
+output_file=""; file_list=""; directory=""; extensions="py,js,ts,go"; auto_paste=false; auto_monitor=false; monitor_interval=30; monitor_maxtime=300
+
+while getopts "o:f:d:e:pmi:t:h" opt; do
+    case $opt in
+        o) output_file="$OPTARG" ;;
+        f) file_list="$OPTARG" ;;
+        d) directory="$OPTARG" ;;
+        e) extensions="$OPTARG" ;;
+        p) auto_paste=true ;;
+        m) auto_monitor=true ;;
+        i) monitor_interval="$OPTARG" ;;
+        t) monitor_maxtime="$OPTARG" ;;
+        h) print_help; exit 0 ;;
+        *) echo "Try 'o3r --help' for more info."; exit 1 ;;
+    esac
+done
+
+[ -z "$file_list" ] && [ -z "$directory" ] && { echo "Error: Provide -f or -d"; exit 1; }
+
+# Function to generate formatted content
+generate_content() {
+    # Create a temp file to check size
+    temp_file=$(mktemp)
+    
+    cat << 'EOL' > "$temp_file"
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+EOL
+    
+    # Record start time
+    start_time=$(date +"%Y-%m-%d %H:%M:%S")
+    
+    # Process directory input
+    if [ -n "$directory" ]; then
+        IFS=',' read -ra dirs <<< "$directory"
+        for dir in "${dirs[@]}"; do
+            IFS=',' read -ra exts <<< "$extensions"
+            for ext in "${exts[@]}"; do
+                echo "Scanning directory $dir for .$ext files..."
+                find "$dir" -type f -name "*.$ext" | sort | while read -r file; do
+                    echo "Adding $file..."
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                done
+            done
+        done
+    fi
+    
+    # Process file list input
+    if [ -n "$file_list" ]; then
+        if [ "$file_list" = "-" ]; then
+            # Read from stdin
+            while read -r file; do
+                if [ -f "$file" ]; then
+                    echo "Adding $file..."
+                    ext="${file##*.}"
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                else
+                    echo "Warning: File not found - $file"
+                fi
+            done
+        else
+            # Read from file
+            while read -r file; do
+                if [ -f "$file" ]; then
+                    echo "Adding $file..."
+                    ext="${file##*.}"
+                    echo -e "\n\`\`\`$ext\n# FILE: $file" >> "$temp_file"
+                    cat "$file" >> "$temp_file"
+                    echo -e "\`\`\`" >> "$temp_file"
+                else
+                    echo "Warning: File not found - $file"
+                fi
+            done < "$file_list"
+        fi
+    fi
+    
+    # Add end marker
+    echo -e "\n### END CODEBASE ###\n" >> "$temp_file"
+    
+    # Add statistics
+    total_files=$(grep -c "# FILE:" "$temp_file")
+    total_bytes=$(stat -f "%z" "$temp_file")
+    total_lines=$(wc -l < "$temp_file")
+    end_time=$(date +"%Y-%m-%d %H:%M:%S")
+    # Estimate tokens (rough approximation: ~4 chars per token)
+    est_tokens=$(( total_bytes / 4 ))
+    
+    echo -e "### CODEBASE STATISTICS ###" >> "$temp_file"
+    echo -e "- Files processed: $total_files" >> "$temp_file"
+    echo -e "- Total size: $total_bytes bytes" >> "$temp_file"
+    echo -e "- Total lines: $total_lines" >> "$temp_file"
+    echo -e "- Estimated tokens: $est_tokens" >> "$temp_file"
+    echo -e "- Collection started: $start_time" >> "$temp_file"
+    echo -e "- Collection finished: $end_time" >> "$temp_file"
+    echo -e "### END STATISTICS ###\n" >> "$temp_file"
+    
+    # Output the content
+    cat "$temp_file"
+    
+    # Cleanup
+    rm "$temp_file"
+}
+
+# Function to auto-paste to O3
+auto_paste_to_o3() {
+    # Check for macOS
+    if [ "$(uname)" != "Darwin" ]; then
+        echo "Error: Auto-paste only works on macOS"
+        return 1
+    fi
+    
+    # Attempt to find the O3 chrome app
+    # This is a fallback if the o3r_collect_response.sh script doesn't exist
+    osascript <<EOF
+tell application "Google Chrome Dev" to activate
+delay 1
+tell application "System Events"
+    keystroke "v" using command down
+    delay 2
+    key code 36  # Press Enter
+end tell
+EOF
+
+    echo "Content pasted to O3"
+}
+
+# Main output handling
+if [ -n "$output_file" ]; then
+    generate_content > "$output_file"
+    echo "Content saved to $output_file"
+else
+    # Try to use clipboard
+    if command -v pbcopy > /dev/null; then
+        generate_content | pbcopy
+        echo "Content copied to clipboard (Mac)"
+        
+        if $auto_paste; then
+            # Use the web app automation script
+            echo "Opening O3 via web automation..."
+            # Check if the script exists and is executable
+            web_script="$(dirname "$0")/o3r_collect_response.sh"
+            if [ -x "$web_script" ]; then
+                "$web_script"
+                
+                # If auto-monitor is enabled, start monitoring
+                if $auto_monitor; then
+                    monitor_script="$(dirname "$0")/o3r_monitor_response.sh"
+                    if [ -x "$monitor_script" ]; then
+                        echo "Starting response monitoring..."
+                        "$monitor_script" -i "$monitor_interval" -m "$monitor_maxtime"
+                    else
+                        echo "Monitoring not started. You can run it manually when ready."
+                    fi
+                else
+                    echo "Monitoring not enabled. Run the following when ready:"
+                    echo "$(dirname "$0")/o3r_monitor_response.sh"
+                fi
+            else
+                echo "Warning: o3r_collect_response.sh not found or not executable"
+                echo "Falling back to default auto_paste_to_o3 function"
+                auto_paste_to_o3
+            fi
+        fi
+    elif command -v xclip > /dev/null; then
+        generate_content | xclip -selection clipboard
+        echo "Content copied to clipboard (Linux)"
+        $auto_paste && echo "Warning: Auto-paste not supported on Linux"
+    else
+        echo "Error: Install pbcopy (Mac) or xclip (Linux), or use -o"; exit 1
+    fi
+fi```
+
+### END CODEBASE ###
+
+### CODEBASE STATISTICS ###
+- Files processed: 6
+- Total size: 8692 bytes
+- Total lines:      248
+- Estimated tokens: 2173
+- Collection started: 2025-04-12 00:05:10
+- Collection finished: 2025-04-12 00:05:10
+### END STATISTICS ###
+

@@ -152,11 +152,15 @@ function analyze_code {
     local exts="$2"
     local max_files="$3"
     local output_dir="$4"
-    local insights_file="$output_dir/$INSIGHTS_FILE"
+    
     local temp_dir=$(mktemp -d)
-    local prompt_file="$temp_dir/prompt.txt"
+    local prompt_file="$temp_dir/analysis_prompt.txt"
+    local insights_file="$output_dir/$INSIGHTS_FILE"
     local timestamp=$(date '+%Y%m%d%H%M%S')
     local files_to_analyze=$(select_files "$dir" "$exts" "$max_files")
+    
+    # Record start time
+    local start_time=$(date '+%Y-%m-%d %H:%M:%S')
     
     log "Starting analysis of $dir"
     log "Selected $(echo "$files_to_analyze" | wc -l) files for analysis"
@@ -179,6 +183,23 @@ function analyze_code {
     
     # Add end marker
     echo -e "\n### END CODEBASE ###\n" >> "$prompt_file"
+    
+    # Add statistics
+    local total_files=$(grep -c "# FILE:" "$prompt_file")
+    local total_bytes=$(stat -f "%z" "$prompt_file")
+    local total_lines=$(wc -l < "$prompt_file")
+    local end_time=$(date '+%Y-%m-%d %H:%M:%S')
+    # Estimate tokens (rough approximation: ~4 chars per token)
+    local est_tokens=$(( total_bytes / 4 ))
+    
+    echo -e "### CODEBASE STATISTICS ###" >> "$prompt_file"
+    echo -e "- Files processed: $total_files" >> "$prompt_file"
+    echo -e "- Total size: $total_bytes bytes" >> "$prompt_file"
+    echo -e "- Total lines: $total_lines" >> "$prompt_file"
+    echo -e "- Estimated tokens: $est_tokens" >> "$prompt_file"
+    echo -e "- Collection started: $start_time" >> "$prompt_file"
+    echo -e "- Collection finished: $end_time" >> "$prompt_file"
+    echo -e "### END STATISTICS ###\n" >> "$prompt_file"
     
     # Submit to O3 for analysis
     # This would use o3r's automation features

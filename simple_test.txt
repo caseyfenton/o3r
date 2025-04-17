@@ -1,0 +1,276 @@
+Scanning directory ./README.md for .md files...
+Adding ./README.md...
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase to be more vertically compressed and efficient while maintaining functionality. Requirements:
+1. Combine related functions, variables, and imports on single lines where logical
+2. Use Python shorthand syntax (list/dict comprehensions, ternaries, etc.)
+3. Merge similar logic and remove redundant code
+4. CRITICAL: Preserve ALL literal strings exactly as-is, including:
+   - Success messages
+   - Error messages
+   - API responses
+   - Log messages
+   - Test assertions
+5. Preserve docstrings and comments that explain complex logic
+6. Maintain the same imports, just organize them better
+
+### CODEBASE ###
+
+```md
+# FILE: ./README.md
+# O3R: Unleash the Power of O3 for Code Refactoring
+
+**O3R** (pronounced "o-three-r") is a powerful utility that unlocks the full potential of OpenAI's O3 model for code refactoring, enhancement, and development. This tool bridges the gap between limited-context coding assistants and O3's massive context window capabilities.
+
+## 🚀 Why O3R Changes the Game
+
+Most coding assistants suffer from limited context windows, making it difficult to work with large codebases. O3R solves this problem by:
+
+- **Leveraging O3's 200K token context window** - Process entire modules or projects at once
+- **Utilizing O3's 100K output token capacity** - Get comprehensive rewrites and refactors in one shot
+- **Automating the entire workflow** - From code preparation to response collection
+- **Maximizing value from ChatGPT subscriptions** - O3 web interface charges per query/response, not per token
+
+## 💡 Use Cases
+
+### Comprehensive Code Refactoring
+Feed entire modules into O3 to:
+- Modernize legacy codebases
+- Apply consistent patterns across your project
+- Convert between paradigms (e.g., OOP to functional)
+
+### One-Shot Feature Implementation
+Provide full context for more accurate feature additions:
+- Add new functionality with complete understanding of your codebase
+- Implement cross-cutting concerns correctly the first time
+- Ensure new code follows existing patterns and conventions
+
+### Deep Bug Fixing
+Fix complex bugs that span multiple files:
+- Include all relevant code paths in a single prompt
+- Get fixes that address root causes, not just symptoms
+- Debug issues that depend on interactions between components
+
+### Code Quality Improvements
+Enhance your entire codebase at once:
+- Apply consistent formatting and style
+- Improve performance bottlenecks
+- Add proper error handling throughout
+- Enhance documentation and type hints
+
+## ✨ Features
+
+- 🔄 **Smart Concatenation**: Combines source files with proper formatting and instructions
+- 📎 **Clipboard Integration**: Automatically copies prepared content
+- 🚀 **Auto-Paste**: Opens O3 web app and pastes your code (optional)
+- 📊 **Response Monitoring**: Watches for when O3 completes its response (optional)
+- 📋 **Response Collection**: Extracts code from O3's response for easy integration
+- ⚙️ **Customizable Process**: Supports various file types and configurations
+
+## 💰 Cost Efficiency
+
+Using o3r with a ChatGPT subscription provides exceptional value:
+- **Subscription-based pricing**: Pay a flat fee (e.g., $20/month) rather than per-token API costs
+- **Unlimited queries**: Process large codebases without worrying about token costs
+- **Avoid $1+ API charges**: A single large refactoring job via API could cost dollars per run
+
+## 🔧 Installation
+
+```bash
+# Clone the repository
+git clone https://github.com/caseyfenton/o3r.git
+cd o3r
+
+# Install globally
+./install.sh
+```
+
+This will install the following commands:
+
+- `o3r`: Main tool for preparing code for O3 refactoring
+- `o3r-collect`: Tool for collecting responses from O3
+- `o3r-monitor`: Tool for monitoring O3 for responses
+- `o3r-run`: All-in-one background tool for the complete O3 workflow
+
+### Chrome App Setup (Required for Auto-paste and Monitoring)
+
+For the auto-paste and monitoring features to work reliably, you need to create a Chrome App for O3:
+
+1. Open Chrome
+2. Navigate to https://chat.openai.com/?model=o3-mini-high
+3. Click menu (three dots) → More tools → Create shortcut
+4. Check "Open as window" option
+5. Name it "ChatGPT-o3-mini-high" (important to match exactly what the scripts look for)
+6. Click Create
+
+This creates a dedicated window that the scripts can reliably target for automation.
+
+## 📖 Usage
+
+### Basic Usage
+
+```bash
+# Process all Python files in the current directory
+o3r -d . -e py
+
+# Process JavaScript and TypeScript files in the src directory
+o3r -d ./src -e js,ts
+
+# Process specific files listed in a text file
+o3r -f my_files.txt
+```
+
+### Command Options Explained
+
+The main command `o3r` takes the following options:
+
+- `-d DIR` : **Directory** - Process all matching files in the specified directory (recursively)
+- `-f FILE` : **File List** - Read list of files from the specified file
+- `-e EXTS` : **Extensions** - Comma-separated list of file extensions to include (default: py,js,ts,go)
+- `-o FILE` : **Output** - Write output to a file instead of clipboard
+- `-p` : **Paste** - Auto-paste to O3 web app (Mac only)
+- `-m` : **Monitor** - Auto-monitor for responses after submission (Mac only)
+- `-i SECS` : **Interval** - Check interval for monitoring in seconds (default: 30)
+- `-t SECS` : **Timeout** - Maximum wait time for monitoring in seconds (default: 300)
+
+### Advanced Usage Examples
+
+```bash
+# Auto-paste to O3 web app
+o3r -d ./src -e py -p
+
+# Auto-paste AND monitor for responses
+o3r -d ./src -e py -p -m
+
+# Write output to a file instead of clipboard
+o3r -d ./src -e py -o refactor_request.txt
+
+# Set custom monitoring intervals (check every 10 seconds for 5 minutes)
+o3r -d ./src -e py -p -m -i 10 -t 300
+
+# Process multiple directories
+o3r -d "src/core,tests" -e py
+
+# Use with file list from standard input
+echo -e "file1.py\nfile2.py" | o3r -f -
+```
+
+### Response Collection
+
+Once your code has been processed by O3, you can collect the response using:
+
+```bash
+# Collect the full response from O3
+o3r-collect collect
+
+# Extract just the code blocks
+o3r-collect code
+```
+
+## 🚧 Future Plans
+
+This project is actively evolving with several enhancements planned:
+
+### AI-Assisted File Selection
+
+We're working on integrating intelligent file selection to automatically identify the most relevant files for refactoring:
+
+- Use AI to analyze project structure and determine entry points
+- Identify core files and dependencies based on import graphs
+- Prioritize files based on complexity and refactoring potential
+- Optimize token usage by focusing on the most impactful files
+
+### Enhanced Workflow Integration
+
+- Integration with popular IDEs and editors
+- Support for diff-based application of changes
+- Automatic test running after refactoring
+- Version control integration
+- Improved browser automation that doesn't rely on Chrome Apps
+- Cross-platform window targeting for more reliable automation
+
+### Additional Features
+
+- Support for custom templates and prompt libraries
+- Project configuration files for recurring refactoring tasks
+- Expanded language support
+
+### Automated Code Analysis
+
+We're planning a continuous code analysis feature that leverages O3 to provide ongoing insights about your codebase:
+
+- **Background Monitoring**: Automatically analyze your code on schedule or when files change
+- **Intelligent Insights**: Receive suggestions for improvements, potential bugs, and optimization opportunities
+- **Integration with BGRun**: Load insights directly into your coding environment as you work
+- **Contextual Awareness**: Make LLMs aware of O3's higher-level insights about your codebase
+
+#### Implementation Plan
+
+1. Create a daemon script that watches for file changes or runs on a schedule
+2. Periodically collect relevant files based on configurable rules
+3. Submit to O3 with analysis-focused prompts (different from refactoring prompts)
+4. Parse and store insights in a structured format
+5. Expose insights via API or file interface for integration with coding tools
+
+This will create a feedback loop where your most capable model (O3) continuously analyzes your code in the background, while your everyday coding assistant remains aware of these insights.
+
+### BGRun Integration
+
+We've implemented integration with the BGRun tool to make O3's code analysis insights available directly to LLMs during your coding sessions:
+
+- **Automatic Widget Creation**: O3 insights appear as widgets in your `.windsurfrules` file
+- **Scheduled Analysis**: Set custom intervals for background code analysis (hourly, daily, etc.)
+- **Contextual Awareness**: Your LLM assistant automatically sees the insights when coding
+
+#### Usage
+
+```bash
+# Setup automated analysis with default settings (4-hour interval)
+./o3r_bgrun_integration.sh
+
+# Analyze only Python files in src directory every 12 hours
+./o3r_bgrun_integration.sh -d ./src -e py -i 12h
+
+# Run once and show current insights
+./o3r_bgrun_integration.sh -1 -s
+```
+
+#### Options
+
+- `-d DIR` - Project directory to analyze (default: current directory)
+- `-e EXTS` - File extensions to analyze (default: py,js,ts,go)
+- `-i INTERVAL` - Check interval like 30m, 4h, 1d (default: 4h)
+- `-n MAX` - Maximum number of files to analyze at once (default: 10)
+- `-w NAME` - Custom widget name (default: o3r-insights)
+- `-s` - Show current insights without starting analysis
+- `-1` - Run analysis once and exit (no background monitoring)
+
+#### How It Works
+
+1. The integration script uses `o3r_analyze.sh` to periodically analyze your code
+2. Analysis results are formatted into concise summaries
+3. BGRun creates or updates a widget in `.windsurfrules` with the insights
+4. Your LLM coding assistant automatically sees these insights during your coding sessions
+
+This creates a seamless experience where O3's powerful analytical capabilities continuously inform your everyday coding assistant.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+```
+
+### END CODEBASE ###
+
+### CODEBASE STATISTICS ###
+- Files processed: 1
+- Total size: 10102 bytes
+- Total lines:      265
+- Estimated tokens: 2525
+- Collection started: 2025-04-12 00:05:17
+- Collection finished: 2025-04-12 00:05:17
+### END STATISTICS ###
+

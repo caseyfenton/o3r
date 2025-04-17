@@ -1,0 +1,36 @@
+### REFACTORING INSTRUCTIONS ###
+Refactor this codebase according to the following requirements, ordered by importance:
+
+0. CRITICAL: ALWAYS USE PROPER CODE FENCING! Every code snippet MUST be wrapped in triple backticks (```) with the appropriate language specified. Example: ```swift [code goes here] ``` - This is THE MOST IMPORTANT requirement as it ensures proper parsing and execution.
+
+1. MAXIMIZE VERTICAL DENSITY: Combine related functions, variables, and imports on single lines where logical to reduce total line count and improve information density.
+
+2. PRESERVE FUNCTIONALITY: Ensure the code works exactly the same after refactoring - maintain all behaviors, API contracts, and external interfaces.
+
+3. OPTIMIZE SYNTAX: Use language-specific shorthand syntax (ternaries, comprehensions, etc.) to reduce line count while maintaining readability.
+
+4. MERGE REDUNDANCIES: Combine similar logic and remove duplicated code without changing behavior or external interfaces.
+
+5. PRESERVE CRITICAL CONTENT: Keep ALL literal strings exactly as-is, including:
+   - Success/error messages
+   - API responses
+   - Log messages
+   - Test assertions
+   - User-facing text
+
+6. MAINTAIN DOCUMENTATION: Preserve docstrings and comments that explain complex logic or provide context for other developers.
+
+7. ORGANIZE IMPORTS: Keep the same imports, but organize them better for readability and maintainability.
+
+8. RESPONSE FORMAT: Begin with any observations/concerns about the code, then present ALL refactored code in properly fenced code blocks with language specification, and conclude with any implementation notes or recommendations.
+
+9. FILE REFERENCES: When referencing other files that may need changes, explicitly list them with their full paths.
+
+10. TEST IMPACT: Note any refactorings that might require additional test coverage or updates to existing tests.
+
+### IMPORTANT NOTES ###
+- If you're unsure about a refactoring, choose the safer option that preserves functionality
+- Do not remove ANY functionality, no matter how unused it might appear
+- Always prioritize code correctness over brevity
+- For specialized language features, prefer standard idioms over clever tricks
+- When you see repeated patterns, consider abstracting only if it improves maintainability
