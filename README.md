@@ -241,3 +241,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 ## 📄 License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Changelog
+
+- **2025-04-22**: Redirected status messages to stderr in `o3r.sh` to prevent them from being included in generated output files.
